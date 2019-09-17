@@ -1,0 +1,17 @@
+name: master-thesis
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python
+  - tensorflow-gpu
+  - spyder
+  - matplotlib
+  - coloredlogs
+  - pip
+  - numpy
+  - matplotlib
+  - opencv
+  - scipy
+  - pip:
+    - pyrealsense2
