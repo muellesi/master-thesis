@@ -1,0 +1,124 @@
+
+% Jan Stoess <stoess@ira.uka.de>
+% Simon Kellner <kellner@kit.edu>
+% Konrad Miller <miller@kit.edu>
+%
+\documentclass[12pt, a4paper]{book}
+\usepackage{graphicx}
+\usepackage{chngpage}
+\usepackage{xspace,ifthen,epsfig}
+\usepackage{cite}
+\usepackage{color}
+\usepackage{fancybox}
+%\usepackage{pdfpages}
+\usepackage{setspace}
+\usepackage{subfigure}
+\usepackage{longtable}
+\usepackage{tabularx} 
+\usepackage{ltxtable} 
+\usepackage{times}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{epstopdf}
+\usepackage[ngerman]{babel}
+\usepackage[utf8]{inputenc}
+%\usepackage[ansinew]{inputenc}
+\usepackage{fancyhdr}
+\usepackage{styles/kitthesiscover}
+\usepackage[%dvipdfm,
+   pdfauthor={Simon Mueller},
+   pdftitle={Eunfuehrung Gestenerkennung},
+   pdfsubject={Masters Thesis},
+   pdfkeywords={Computer Vision, Gestures, Convolutional Neural Networks}
+]{hyperref}
+
+\bibliographystyle{styles/plain}
+
+%\raggedbottom
+\newcommand{\todo}[1]{{\texttt{[#1]}}}
+\newcommand{\code}[1]{{\tt \small{#1}}}
+\newcommand{\evenindent}[2]{\ifodd #1 \else \hspace*{#2} \fi}
+
+\begin{document}
+\frontmatter
+\unitlength1cm
+
+\input{thesis_title}
+
+\mainmatter
+\cleardoublepage
+%\phantomsection
+%\addcontentsline{toc}{chapter}{Contents}
+%\tableofcontents 
+
+% Removes all sectionheaders in order to be able to count actual pages of text
+%\renewcommand{\section}[1]{%
+%	\par\refstepcounter{section}% Increase section counter
+%	\sectionmark{#1}% Add section mark (header)
+%	\addcontentsline{toc}{section}{\protect\numberline{\thesection}#1}% Add section to ToC
+%	% Add more content here, if needed.
+%}
+
+\refstepcounter{chapter}
+
+\section{Exposé}
+
+Mit der zunehmenden Beliebtheit von virtuellen Assistenten werden alternative Bedienmethoden für User-Interfaces im Alltag immer häufiger auch im Automotive-Bereich eingesetzt. Viele Assistenten der aktuellen Generation stellen dabei allerdings lediglich eine Spracheingabe zur Verfügung.
+
+Insbesondere im Hinblick auf die Barrierefreiheit ist es jedoch wünschenswert, neben einer reinen Spracheingabe auch andere Eingabemöglichkeiten zur Verfügung zu stellen. Doch auch für Menschen ohne Einschränkungen der akustischen Wahrnehmung ist eine Spracheingabe nicht immer die optimale Eingabemethode. Ein Beispiel hierfür ist die Multimediasteuerung in einem Automobil - hier ist die Spracheingabe eventuell bereits durch die abgespielte Musik so weit eingeschränkt, dass auf traditionelle Eingabemethoden wie Bedienpanels oder Touchscreens zurückgegriffen werden muss. 
+
+Da Eingaben per Knopfdruck oder Touch-Display allerdings stark vom Straßenverkehr ablenken, könnten zusätzliche Eingabemöglichkeiten, die nicht das Abwenden der Augen erfordern, hier zusätzlich die Sicherheit erhöhen.
+
+Eine mögliche Lösung für diese Probleme ist die Gestensteuerung - hierbei werden Kommandos bestimmten Handgesten zugeordnet. Handgesten können dabei statisch sein, jedoch auch komplexe Bewegungsabläufe umfassen, die in der Regel vorprogrammiert sind. Aufgrund von stark unterschiedlichen Nutzungsmustern, wäre ein System, in dem Gesten durch den Nutzer frei bestimmt werden können jedoch von Vorteil. 
+
+Im Rahmen der Arbeit soll ein innovatives selbstlernendes Gestensteuerungssystem für Automobile entwickelt werden, das es ermöglicht, beliebige Handgesten durch Vormachen zu programmieren. In einem ersten Schritt kann das System mit Hilfe mehrerer aufgezeichneter Videos verschiedener Handgesten vortrainiert werden, das Ziel soll jedoch ein one-shot learning sein, sodass der Anwender beliebige Gesten durch einmaliges Vormachen definieren kann.
+
+Hierfür soll ein zweigeteiltes System aus einem Convolutional Neural Network (CNN) und einem Classifier zum Einsatz kommen. Zweck des CNN wird sein, ein per 3D-Kamera (Intel Realsense) aufgezeichnetes Tiefenbild der Handgeste auf die virtuelle Repräsentation einer Hand abzubilden und so die Dimensionalität der Eingangsdaten entscheidend zu verringern. Anschließend wird die Pose (beziehungsweise Abfolge von Posen) mit Hilfe eines Classifiers einer durch den Benutzer vorgegebenen Funktion zugeordnet. Dabei muss das spätere Ziel des one-shot learnings berücksichtigt werden, was Algorithmen, die viele Trainingsdaten voraussetzen, ausschließt. Da eventuell auch bewegte Gesten ermöglicht werden sollen, wird außerdem ein Classifier benötigt, der dies berücksichtigen und die zeitliche Abfolge mehrerer Posen einer einzelnen Geste zuordnen kann.
+
+%\section{Aktueller Forschungsstand}
+In der Forschung liegt auf dem Bereich Computer Vision, insbesondere Objekterkennung und -klassifizierung in den letzten Jahren ein starker Fokus \cite{FeiFei}. Gerade im Bereich der Gestenerkennung gibt es zahlreiche Arbeiten, die unterschiedliche Strategien zur Segmentierung und Interpretation von Hand- aber auch Ganzkörpergesten untersuchen \cite{Zimmermann03.05.2017,Sato1317March2001,Supancic2018,Tompson2014,Zhang23.10.2016,OhnBar2014,Ge2019,Keskin2012,Li2013,Jones2002}. 
+
+
+Für die Segmentierung stellen in den zitierten Arbeiten zumeist zwei Kriterien eine besondere Herausforderung dar:
+
+Zum einen müssen für eine erfolgreiche Extraktion der Hände aus einem RGB-Bild relevante Bildbereiche von nicht relevanten Bereichen getrennt werden. Ein einfacher Ansatz über die Hautfarbe wie in \cite{Sato1317March2001} ist auch bei Betrachtung in verschiedenen Farbräumen durch unterschiedliche Hauttypen und Lichtsituationen nicht immer ausreichend, weshalb \cite{Zhang23.10.2016} und \cite{Li2013} zusätzlich eine Kombination verschiedener Techniken wie Background Subtraction, Betrachtung der Textur und Gruppierung in Superpixel nutzen. Häufig wird jedoch auch wie in \cite{Sridhar2013} ein optimierter Hintergrund eingesetzt, der wenige oder keine Hauttöne enthält.
+
+Zum anderen ist Selbstverdeckung bei der anschließenden Gestenerkennung ein Problem, das die Erkennung bestimmter Posen erschweren kann. Hier kann eine Fusion aus Tiefeninformationen und RGB-Kamerabildern entscheidende Vorteile bringen \cite{Keskin2012}.
+
+Die anschließende Klassifizierung der Posen in Gesten wird in den meisten Arbeiten nicht weiter behandelt, da oft lediglich die Posenerkennung das Ziel ist.
+
+%\section{Ablauf der Arbeit}
+Zunächst erfolgt Recherchearbeit zu den Themen Optik, Computer Vision - insbesondere Segmentierung, Convolutional Neural Networks und Klassifizierungsalgorithmen, bzw. Netzwerken. Aus den Rechercheergebnissen kann anschließend der Plan für ein entsprechendes Softwaresystem entworfen werden.
+
+Gleichzeitig zur Systemplanung muss die Planung und der Aufbau einer Versuchsumgebung erfolgen, um früh genug eine ausreichende Menge von Trainingsdaten zur Verfügung zu haben.
+In der Planung des physikalischen Aufbaus wird insbesondere die Ausrichtung der Kameras zu betrachten sein. Denkbar sind zwei Grundrichtungen: Eine Aufnahme in Richtung der Frontscheibe, beziehungsweise des Armaturenbrettes und alternativ eine Aufnahme in Richtung des Fahrzeuginnenraums. 
+
+Die anschließende Implementierung kann in der bereits erwähnten Zweiteilung stattfinden - zunächst wird ein CNN für die Abbildung der Kamerabilder auf ein virtuelles Skelett implementiert und untersucht - als Trainingsdaten können hier unter Umständen auch bereits bestehende Datensets wie von \cite{Zimmermann03.05.2017} online unter \url{https://lmb.informatik.uni-freiburg.de/resources/datasets/RenderedHandposeDataset.en.html} zur Verfügung gestellt genutzt werden. Da diese Abbildung unabhängig von der eigentlichen Handgeste ist, kann dieses Modul im Anschluss für alle weiteren Versuche genutzt werden. 
+
+Nach erfolgreichen Tests des CNN kann anschließend in einem zweiten Schritt der Classifier zur Interpretation der Gesten als zweites Glied der Kette implementiert werden. Hierbei stehen verschiedene Algorithmen zur Auswahl, deren Eignung für das Handgestenproblem zu beurteilen ist. Beispiele wären hier Nearest Neighbor, Time Delay Neural Networks oder auch Long Short Term Memory Recurrent Neural Networks(LSTM-RNN).\\
+
+
+\section{Zeitplanung}
+\setlength{\tabcolsep}{15pt}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{|p{2cm}|p{0.75\linewidth}|}
+	\hline
+	\textbf{Monat} & \textbf{Aufgabe}\\
+	\hline
+	1-2 & Recherche zum Thema Computer Vision, Deep Learnig und Best Practices bei Gestenerkennung.\\
+	2 & Recherche zum Thema Optik und zum physikalischen Versuchsaufbau. Insbesondere Kontrast zu Hintergrund, Beleuchtung in Innenräumen. Evtl. Start Implementierung der Softwareinfrastruktur.\\
+	3 & Physikalischer Aufbau der Versuchsumgebung\\
+	3-4 & Softwareimplementierung, Training verwendeter Netze.\\
+	4-5 & Versuchsdurchführung und -optimierung\\
+	6 & Evaluation\\
+	1-6 & Dokumentation\\
+	\hline
+\end{tabular}
+
+%\backmatter    
+%\chapter{Bibliography}
+%\phantomsection
+%\addcontentsline{toc}{chapter}{Literatur}
+\bibliography{thesis}
+\end{document}
