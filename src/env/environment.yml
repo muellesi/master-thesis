@@ -9,6 +9,7 @@ dependencies:
   - opencv
   - pandas
   - pip
+  - pylint
   - python
   - scipy
   - spyder
