@@ -3,15 +3,15 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python
-  - tensorflow-gpu
-  - spyder
-  - matplotlib
   - coloredlogs
-  - pip
-  - numpy
   - matplotlib
+  - numpy
   - opencv
+  - pandas
+  - pip
+  - python
   - scipy
+  - spyder
+  - tensorflow-gpu
   - pip:
     - pyrealsense2
