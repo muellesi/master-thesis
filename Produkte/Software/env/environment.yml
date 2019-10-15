@@ -14,5 +14,11 @@ dependencies:
   - scipy
   - spyder
   - tensorflow-gpu
+  - keras-gpu
+  - seaborn
+  - scikit-learn
+  - pillow
+  - zlib
+  - bzip2
   - pip:
     - pyrealsense2
