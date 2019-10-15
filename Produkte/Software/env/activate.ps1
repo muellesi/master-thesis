@@ -17,13 +17,16 @@ elseif (Test-Path "C:\Program Files\Miniconda3" -PathType Container) {
     $anaconda_path = "C:\Program Files\Miniconda3"
     Write-Output "Found Miniconda global installation!"
 }
-
+elseif (Test-Path "C:\tools\Anaconda3" -PathType Container) {
+    $anaconda_path = "C:\tools\Anaconda3"
+    Write-Output "Found Anaconda ITIV installation!"
+}
 
 if (!(Test-Path $anaconda_path -PathType Container)) {
     Write-Output "No valid conda installation was found!"
 } else {
     & "$anaconda_path\shell\condabin\conda-hook.ps1"
-
+    conda activate "$anaconda_path"
 
     $env_name = ""
     Get-Content -Path environment.yml | foreach-object {
