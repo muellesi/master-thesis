@@ -1,29 +1,34 @@
 # -*- coding: utf-8 -*-
-
-import logging
 import urllib
 import os
 import shutil
+from progressbar import ProgressBar
+from loggingutil import get_logger
 
-dataUrls = [
-
-        ]
-
-dataDirName = "data"
+dataDirName = r"C:\data"
 dataDirDownloadCache = "cache"
 
-def get_logger():
-    logger = logging.getLogger()
-    logging.basicConfig(format='%(asctime)-15s %(clientip)s %(user)-8s %(message)s', level=logging.INFO)
-    formatter = logging.Formatter('%(asctime)-15s: %(message)s')
-    for handler in logger.handlers:
-        handler.formatter = formatter
-    return logger
+pbar = None
+downloaded = 0
 
-def get_data():
+def show_download_progress(count, block_size, total_size):
+    global pbar
+    if pbar is None:
+        pbar = ProgressBar(maxval=total_size)
+    global downloaded
+    downloaded += block_size
+    if downloaded > total_size:
+        downloaded = total_size
+    pbar.update(downloaded)
+    if downloaded == total_size:
+        pbar.finish()
+        pbar = None
+        downloaded = 0
+
+def get_data(dataUrls):
     global dataDirName
     dataDirName = os.path.abspath(dataDirName)
-    logger = get_logger();
+    logger = get_logger(__file__);
 
     for url in dataUrls:
         logger.info("Downloading {}".format(url))    
@@ -37,7 +42,7 @@ def get_data():
         downloadedFile = os.path.join(cachePath, urlFileName)
         
         if not os.path.exists(downloadedFile):
-            urllib.request.urlretrieve(url, downloadedFile)
+            urllib.request.urlretrieve(url, downloadedFile, show_download_progress)
         else:
             logger.warning("Target path {} already exists! Using cached version.".format(downloadedFile))
         
@@ -56,5 +61,15 @@ def get_data():
             shutil.unpack_archive(downloadedFile, os.path.join(dataDirName, fileNameWithoutExtension))
 
 
+def read_data_urls():
+    dataUrls = []
+    with open("../datasets.txt", 'r') as file:
+        dataUrls = file.readlines()
+    # allow to comment out data urls
+    dataUrls = [url for url in dataUrls if not (url.startswith("#") or url.startswith("//"))]
+    return dataUrls    
+        
+
 if __name__ == "__main__":
-    get_data()
+    dataUrls = read_data_urls()
+    get_data(dataUrls)

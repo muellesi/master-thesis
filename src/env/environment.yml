@@ -20,5 +20,6 @@ dependencies:
   - pillow
   - zlib
   - bzip2
+  - progressbar2
   - pip:
     - pyrealsense2
