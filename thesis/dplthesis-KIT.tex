@@ -1,6 +1,7 @@
 %##################################################################################
 
 \documentclass[12pt,a4paper,twoside]{report}
+\usepackage[T1]{fontenc}
 %\documentclass[12pt,a4paper,oneside]{report}
 \usepackage{graphicx}
 %\usepackage[ngerman, english]{babel} %-- uncomment this to get english titles
@@ -148,6 +149,8 @@ EVITA
 
     
     \chapter{Einleitung}
+    \cite{1317March2001}
+    \cite{Cremers2015}
     \label{ch:Einleitung}    
     	\input{01_einleitung/bsp-chapter.tex}
     \cleardoublepage
@@ -190,7 +193,7 @@ EVITA
 \bibliographystyle{alphadin}
 
     % use external Bib-File, 
-		\bibliography{99_bib/standardbib}		
+		\bibliography{99_bib/standardbib}
 		\cleardoublepage
 % =====================================================
 % Appendix
