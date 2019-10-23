@@ -9,6 +9,10 @@ if (Test-Path "$env:USERPROFILE\Anaconda3" -PathType Container) {
     $anaconda_path = "$env:USERPROFILE\Anaconda3"
     Write-Output "Found Anaconda user installation!"
 }
+if (Test-Path "$env:LOCALAPPDATA\Continuum\anaconda3" -PathType Container) {
+    $anaconda_path = "$env:LOCALAPPDATA\Continuum\anaconda3"
+    Write-Output "Found Anaconda user installation!"
+}
 elseif (Test-Path "$env:USERPROFILE\Miniconda3" -PathType Container) {
     $anaconda_path = "$env:USERPROFILE\Miniconda3"
     Write-Output "Found Miniconda user installation!"
