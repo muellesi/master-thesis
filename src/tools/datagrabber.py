@@ -8,68 +8,71 @@ from loggingutil import get_logger
 dataDirName = r"C:\data"
 dataDirDownloadCache = "cache"
 
-pbar = None
+progress_bar = None
 downloaded = 0
 
+
 def show_download_progress(count, block_size, total_size):
-    global pbar
-    if pbar is None:
-        pbar = ProgressBar(maxval=total_size)
+    global progress_bar
+    if progress_bar is None:
+        progress_bar = ProgressBar(maxval=total_size)
     global downloaded
     downloaded += block_size
     if downloaded > total_size:
         downloaded = total_size
-    pbar.update(downloaded)
+    progress_bar.update(downloaded)
     if downloaded == total_size:
-        pbar.finish()
-        pbar = None
+        progress_bar.finish()
+        progress_bar = None
         downloaded = 0
 
-def get_data(dataUrls):
+
+def get_data(data_urls):
     global dataDirName
     dataDirName = os.path.abspath(dataDirName)
-    logger = get_logger(__file__);
+    logger = get_logger(__file__)
 
-    for url in dataUrls:
-        logger.info("Downloading {}".format(url))    
-        
-        urlFileName = os.path.basename(url)
-        
-        cachePath = os.path.join(dataDirName, dataDirDownloadCache)
-        if not os.path.exists(cachePath):
-            os.makedirs(cachePath)
-            
-        downloadedFile = os.path.join(cachePath, urlFileName)
-        
-        if not os.path.exists(downloadedFile):
-            urllib.request.urlretrieve(url, downloadedFile, show_download_progress)
+    for url in data_urls:
+        logger.info("Downloading {}".format(url))
+
+        url_file_name = os.path.basename(url)
+
+        cache_path = os.path.join(dataDirName, dataDirDownloadCache)
+        if not os.path.exists(cache_path):
+            os.makedirs(cache_path)
+
+        downloaded_file = os.path.join(cache_path, url_file_name)
+
+        if not os.path.exists(downloaded_file):
+            urllib.request.urlretrieve(url, downloaded_file, show_download_progress)
         else:
-            logger.warning("Target path {} already exists! Using cached version.".format(downloadedFile))
-        
-        fileNameWithoutExtension = os.path.splitext(urlFileName)[0]
-        
-        archiveExts = ['.tar', '.gz', '.bz2', '.zip']
+            logger.warning("Target path {} already exists! Using cached version.".format(downloaded_file))
 
-        isArchive = False
-        for ext in archiveExts:
-            if downloadedFile.endswith(ext):
-                isArchive = True
+        file_name_without_extension = os.path.splitext(url_file_name)[0]
+
+        archive_exts = ['.tar', '.gz', '.bz2', '.zip']
+
+        is_archive = False
+        for ext in archive_exts:
+            if downloaded_file.endswith(ext):
+                is_archive = True
                 break
-            
-        if isArchive:
-            logger.info("Extracting {} to {}".format(downloadedFile, os.path.join(dataDirName, fileNameWithoutExtension)))
-            shutil.unpack_archive(downloadedFile, os.path.join(dataDirName, fileNameWithoutExtension))
+
+        if is_archive:
+            logger.info(
+                "Extracting {} to {}".format(downloaded_file, os.path.join(dataDirName, file_name_without_extension)))
+            shutil.unpack_archive(downloaded_file, os.path.join(dataDirName, file_name_without_extension))
 
 
 def read_data_urls():
-    dataUrls = []
+    data_urls = []
     with open("../datasets.txt", 'r') as file:
-        dataUrls = file.readlines()
+        data_urls = file.readlines()
     # allow to comment out data urls
-    dataUrls = [url for url in dataUrls if not (url.startswith("#") or url.startswith("//"))]
-    return dataUrls    
-        
+    data_urls = [url for url in data_urls if not (url.startswith("#") or url.startswith("//"))]
+    return data_urls
+
 
 if __name__ == "__main__":
-    dataUrls = read_data_urls()
-    get_data(dataUrls)
+    Urls = read_data_urls()
+    get_data(Urls)
