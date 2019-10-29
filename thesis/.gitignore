@@ -8,14 +8,7 @@
 *.rip
 *.lof
 *.lot
-presentation/latex/*.aux
-presentation/latex/*.log
-presentation/latex/*.nav
-presentation/latex/*.out
-presentation/latex/*.pdf
-presentation/latex/*.snm
-presentation/latex/*.toc
-presentation/latex/*.vrb
+*.idx
 rev.tex
 timezone.tex
 rev.tex.aux
