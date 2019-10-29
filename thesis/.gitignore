@@ -6,6 +6,8 @@
 *.pdf
 *.toc
 *.rip
+*.lof
+*.lot
 presentation/latex/*.aux
 presentation/latex/*.log
 presentation/latex/*.nav

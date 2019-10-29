@@ -2,21 +2,106 @@
 	\subsection { Kameraparameter }
 	\subsection { Segmentierung }
 		
-	... Übergang zu gelernten Features ... 
+
 	
 \section { Machine Learning }
+	In den letzen Jahren gab es stetige Fortschritte in der Leistungsfähigkeit von Rechenhardware und damit einhergehend im Bereich des maschinellen Lernens (en. machine learning).
+	In diesem Abschnitt werden kurz die in der Arbeit genutzten machine-learning Techniken aufgezeigt und erläutert.
 	
 	\subsection { Neuronale Netze }
-		\subsubsection { Funktionsweise }
+	Künstliche Neuronale Netze (en.: artificial neural networks, kurz: ANN) sind der biologischen Funktionsweise menschlicher Nervenbahnen nachempfunden. 
+	
+		\subsubsection { Das Perzeptron }
+		Das einlagige Perzeptron, der einfachste Fall eines neuronalen Netzes, besteht aus drei Schichten von jeweils beliebig vielen Recheneinheiten, die als Neuronen bezeichnet werden. Alle Neuronen sind dabei mit allen Neuronen der nachfolgenden Schicht über eine gewichtete Verbindung verknüpft. 
+		
+		Die erste Schicht übernimmt im einlagigen Perzeptron die Rolle des Eingangs. Die zweite Lage wird als "`hidden layer"' bezeichnet und die dritte Schicht stellt die berechneten Ausgangsdaten zur Verfügung.
+		
+		Jede Recheneinheit nimmt die Daten $o_{j-1} = o_i$ aus den vorhergehenden Neuronen entgegen und berechnet einen vorläufigen Ausgangswert $p_j$ nach Gleichung \ref{eq:perceptron_simple}. 
+		
+		\begin{equation}
+			\label{eq:perceptron_simple}
+			\text{net}_j = \sum_{i=1}^{n} w_{ij} \cdot o_i + b
+		\end{equation}
+		
+		Die Gewichte $w_{xy}$ und Bias-Werte $b_x$ werden im Trainingsprozess anhand der Trainingsdaten optimiert und ändern sich nach dem Training nicht mehr.<
+		
+		
+		Die Summe der Produkte wird anschließend über eine nichtlineare Aktivierungsfunktion gefiltert und daraufhin in die nächste Schicht weitergereicht:
+		
+		\begin{equation}
+		\label{eq:perceptron_act}
+		o_j = \varphi\left(\text{net}_j\right)
+		\end{equation}
+		
+		
+		 
 		\subsubsection { Aktivierungsfunktionen }
+		Da die grundlegenden Rechenoperationen in einem neuronalen Netz linearer Natur sind, muss eine zusätzliche Nichtlinearität eingeführt werden, um auch nichtlineare Zusammenhänge erlernen zu können. 
+		Hierfür werden unterschiedliche Aktivierungsfunktionen $\varphi$ eingesetzt, von denen einige häufig genutzte Funktionen im Folgenden erläutert werden.
+		
+		
+		\textbf{Schwellenwertfunktion}\\
+		Die Schwellenwertfunktion besitzt lediglich $0$ und $1$ als mögliche Ausgangswerte. Sie ist mit dem Schwellenwert $\epsilon$ definiert zu 
+		\begin{equation}
+		\label{eq:acti_sw}
+		o_j = \left\{
+		\begin{array}{ll}
+		1\text{, wenn } \text{net}_j > \epsilon \\
+		0 \text{ sonst}\\
+		\end{array}
+		\right.
+		\end{equation}
+
+		\textbf{ReLu}
+		Die Rectifying linear unit (kurz: ReLu) ist eine weitere Form der Aktivierungsfunktion, die insbesondere in Deep Neural Networks und Convolutional Neural Networks eingesetzt wird. Sie ist definiert zu
+		\begin{equation}
+			\label{eq:relu_def}
+			\varphi(\text{net}_j) = \max(\text{net}_j, 0)
+		\end{equation}
+		
+		\begin{figure}
+			\centering
+		\begin{tikzpicture}
+		\begin{axis}[
+		domain=0.125:220,
+		xmin=-10, xmax=10,
+		ymin=-10, ymax=10,
+		samples=400,
+		axis y line=center,
+		axis x line=middle,
+		]
+		\addplot+[mark=none] {max(x, 0)};
+		\end{axis}
+		\end{tikzpicture}
+		\caption{Durch die ReLu-Aktivierungsfunktion werden negative Werte abgeschnitten.}
+		\label{fig:relu_plot}
+		\end{figure}
+	
 		
 	\subsection { Spezialfälle Neuronaler Netze}
 		\subsubsection { Convolutional Neural Networks (CNN) }
+		Faltungsnetzwerke (en.: Convolutional neural networks, kurz CNN) sind ein Spezialfall der neuronalen Netze, der insbesondere für die Verarbeitung von höherdimensionalen Strukturen wie Bilder oder zeitliche Abfolgen von Daten geeignet ist. 
+		
+		In einem CNN werden zusätzlich zu den oben beschriebenen "`Dense-"' oder "`Fully-Connected-"' weitere Schichten eingesetzt, die Faltungsoperationen auf den Daten durchführen.
+		
+		Anstatt einer einfachen Multiplikation erfolgt in jeder Faltungsschicht eine Faltung des Eingangstensors mit einer Faltungsmatrix.
+		
+		Im Fall eines 2D-CNN handelt es sich bei den Eingangsdaten um eine 2D-Matrix. Eine Faltungsschicht enthält mehrere ebenfalls zweidimensionale Matrizen, die über die Eingangsmatrix geschoben werden. 
+		
+		
+		\todo{Bild für Faltung}
+		
+		
 		\subsubsection { Recurrent Neural Networks (RNN) }
 		\subsubsection { Long Short Term Memory (LSTM) }
 	
 	\subsection { Trainingsmethoden }
 	
-	\subsection { Trainingsmethoden }
+		\subsubsection{Gradient Descend}
+		\subsubsection{ADAM}
+		
+	\subsection{ One Shot Learning }
+	Ein Problem der bisher gezeigten Machine Learning-Methoden ist, dass sehr viele Traningsdaten benötigt werden, um die Netze ausreichend zu trainieren. In Anwendungsfällen, in denen die Trainingsdaten erst in der Benutzerinteraktion zur Verfügung stehen können jedoch häufig nicht ausreichend viele Daten gesammelt werden. Eine Möglichkeit zur Umgehung des Problems ist es, keine direkte Klassifizierung durchzuführen sondern ein Netz darauf zu trainieren, die Eingangsdaten mit einem zuvor gespeicherten Datensatz zu vergleichen. \todo{weiter}
 	
 \section { Anatomie der menschlichen Hand }
+	
