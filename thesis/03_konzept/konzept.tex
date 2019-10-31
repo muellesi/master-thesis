@@ -1,0 +1,13 @@
+In diesem Kapitel wird nachfolgend das grundlegende Konzept der Gestenerkennung von den Rohdaten bis zur Klassifizierung der eigentlichen Handgeste besprochen.
+
+\section{Systementwurf}
+Grundsätzlich ist es möglich, die Klassifizierung von Handgesten mit Hilfe von Convolutional Neural Netzworks direkt aus aufgezeichneten Tiefeninformationen durchzuführen. 
+Das Ziel der Arbeit ist jedoch die Entwicklung eines selbstlernenden Klassifizierungssystems, das neue Handgesten mit wenigen Beispieldaten, beziehungsweise im Idealfall nach einmaligem Vormachen erlernen kann. Hierbei ergibt sich das Problem, dass klassische Netzwerke große Datensätze mit Trainingsdaten benötigen, um eine ausreichende Güte bei der Klassifizierung zu erreichen. One-Shot learning, wie oben beschrieben ist aufgrund der großen Menge an Parametern und der Dimensionalität der Eingangsdaten nicht möglich. 
+
+Aus diesem Grund wird das Gesamtsystem in zwei Komponenten aufgeteilt: Zunächst wird aus den 2,5-dimensionalen Eingangsdaten (RGB-D) eine Handpose geschätzt. Diese kann je nach geforderter Genauigkeit in einem Vektor mit 21 oder mehr Elementen dargestellt werden .
+
+
+Die 2,5-dimensionalen Eingangsdaten (RGB-D) werden zunächst ohne zeitlichen Kontext durch eine Handposenschätzung in einen einfachen Parametervektor umgewandelt. Eine akkumulierte Anzahl aufeinanderfolgender Handposen kann anschließend in einem weiteren Netz, dem Gestenklassifikator einer zuvor aufgezeichneten Geste zugeordnet werden.
+
+
+
