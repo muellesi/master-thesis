@@ -2,6 +2,7 @@ name: master-thesis
 channels:
   - conda-forge
   - defaults
+  - numba
 dependencies:
   - coloredlogs
   - matplotlib
@@ -13,10 +14,10 @@ dependencies:
   - python
   - scipy
   - spyder
-  - tensorflow-gpu=1.14.0
-  - keras-gpu=2.2.4
+  - tensorflow-gpu
+  - keras-gpu
   - seaborn
-  - scikit-learn=0.21.3
+  - scikit-learn
   - pillow
   - zlib
   - bzip2
@@ -24,6 +25,9 @@ dependencies:
   - pyyaml
   - h5py
   - trimesh
+  - cudatoolkit
+  - cudnn
+  - pyculib
+  - autopep8
   - pip:
     - pyrealsense2
-    - sklearn-compiledtrees

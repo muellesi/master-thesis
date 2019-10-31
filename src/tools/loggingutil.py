@@ -4,6 +4,7 @@ import sys
 
 def get_logger(name, level=logging.INFO, do_file_logging=True, file_name=""):
     logger = logging.getLogger(name)
+    logger.level = level
     logger.propagate = False
 
     formatter = logging.Formatter('%(asctime)-15s (%(module)s:%(lineno)d) %(levelname)s: %(message)s')

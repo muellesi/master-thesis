@@ -1,6 +1,8 @@
-
+[CmdletBinding(DefaultParametersetName="default")]                  
 param(
-    [switch] $u
+    [switch] $f,
+    [parameter(ParameterSetName="update")][switch] $u,
+    [parameter(ParameterSetName="restore")][switch] $r
 )
 
 $anaconda_path = "C:\Program Files\Anaconda3"
@@ -45,6 +47,16 @@ if (!(Test-Path $anaconda_path -PathType Container)) {
         if ($u) {
             Write-Output "Updating Anaconda env $env_name..."
             conda env update -f .\environment.yml
+        }
+
+        if ($r) {
+            Write-Output "Restoring Anaconda env $env_name from freeze..."
+            conda create --name $env_name --file .\freeze.yml
+        }
+
+        if ($f) {
+            Write-Output "Freezing environment in .\env\freeze.yml ..."
+            conda list -e > freeze.yml
         }
     
         Write-Output "Activating Anaconda environment $env_name..."
