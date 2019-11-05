@@ -1,33 +1,28 @@
 name: master-thesis
 channels:
-  - conda-forge
   - defaults
   - numba
 dependencies:
-  - coloredlogs
-  - matplotlib
-  - numpy
-  - opencv
-  - pandas
-  - pip
-  - pylint
   - python
-  - scipy
-  - spyder
   - tensorflow-gpu
   - keras-gpu
-  - seaborn
-  - scikit-learn
+  - coloredlogs
+  - matplotlib
+  - opencv
+  - pandas
+  - pylint
   - pillow
   - zlib
   - bzip2
   - progressbar2
+  - jupyter
+  - spyder
   - pyyaml
   - h5py
-  - trimesh
   - cudatoolkit
   - cudnn
   - pyculib
   - autopep8
+  - pip
   - pip:
     - pyrealsense2
