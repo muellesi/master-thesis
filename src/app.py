@@ -35,17 +35,17 @@ input_target_height = 64
 # training:
 train_pose_model = True
 pose_train_data_dir = r"E:\MasterDaten\Datasets\FHAD"
-pose_batch_size = 20
+pose_batch_size = 50
 pose_epochs = 7
 pose_data_scale = 1/2**16
 
 def main(argv):
 
     # TODO: load model for pose estimation
-    pose_model = models.hand_pose_estimator.make_model(input_shape=(input_target_width,input_target_height,1))
+    pose_model = models.hand_pose_estimator.make_model(input_shape=(input_target_width, input_target_height, 1))
 
     if train_pose_model:
-        data_generator = tools.FHADDataProvider(pose_train_data_dir, pose_batch_size, input_target_width, input_target_height)
+        data_generator = tools.FHADDataProvider(pose_train_data_dir)
         models.hand_pose_estimator.train_model(pose_model, data_generator, pose_batch_size, pose_epochs)
     # TODO: load model for gesture recognition
     # gesture_model = gc.make_model()
