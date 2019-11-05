@@ -54,13 +54,14 @@ if (!(Test-Path $anaconda_path -PathType Container)) {
             conda create --name $env_name --file .\freeze.yml
         }
 
+        Write-Output "Activating Anaconda environment $env_name..."
+        conda activate $env_name
+
         if ($f) {
             Write-Output "Freezing environment in .\env\freeze.yml ..."
             conda list -e > freeze.yml
         }
-    
-        Write-Output "Activating Anaconda environment $env_name..."
-        conda activate $env_name
+
     } else {
         Write-Output "Could not retrieve environment name from environment.yml!"
     }
