@@ -18,8 +18,8 @@ dependencies:
   - spyder
   - pyyaml
   - h5py
-  - cudatoolkit
-  - cudnn
+  - cudatoolkit=10.0.130
+  - cudnn=7.6.4
   - autopep8
   - pip
   - pip:
