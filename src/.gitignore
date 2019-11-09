@@ -1,5 +1,11 @@
 data/
 
+#exclude playground folder...
+playground/*
+# but keep notebooks and scripts
+!playground/*.ipynb
+!playground/*.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
