@@ -128,8 +128,37 @@
 		\subsubsection{ADAM}
 		\todo{Link zum Paper ist in tensorflow source von adam optimizer zu finden}
 		
-	\subsection{ One Shot Learning }
-	Ein Problem der bisher gezeigten Machine Learning-Methoden ist, dass sehr viele Traningsdaten benötigt werden, um die Netze ausreichend zu trainieren. In Anwendungsfällen, in denen die Trainingsdaten erst in der Benutzerinteraktion zur Verfügung stehen können jedoch häufig nicht ausreichend viele Daten gesammelt werden. Eine Möglichkeit zur Umgehung des Problems ist es, keine direkte Klassifizierung durchzuführen sondern ein Netz darauf zu trainieren, die Eingangsdaten mit einem zuvor gespeicherten Datensatz zu vergleichen. \todo{weiter}
+	\subsection{ One Shot Learning - Siamesische Netze }
+	Ein Problem der bisher gezeigten Machine Learning-Methoden ist, dass sehr viele Traningsdaten benötigt werden, um die Netze ausreichend zu trainieren. In Anwendungsfällen, in denen die Trainingsdaten erst in der Benutzerinteraktion zur Verfügung stehen, können jedoch häufig nicht ausreichend viele Daten gesammelt werden. 
+	
+	Ein klassischer Anwendungsfall für One Shot learning ist daher zum Beispiel die Gesichtserkennung in Anwendersoftware. Hier muss es möglich sein, mit wenigen Gesichtern als Vorlage ein Gesicht auf einem neuen Photo zuverlässig wiederzuerkennen. Gleichzeitig sollte es jeder Zeit möglich sein, neue Klassen hinzuzufügen oder alte Klassen zu entfernen. Auch hier ist ein klassisches Netzwerk mit einer festen Anzahl von Ausgangsneuronen - und damit Klassen - ungeeignet.
+
+	\subsubsection{Funktionsprinzip}
+		Siamesische Netze sind eine mögliche Lösung für beide genannten Probleme: Sie vergleichen zwei Eingangstensoren und errechnen aus diesen einen Ähnlichkeitsfaktor. Anhand dieses Faktors kann nach Vergleich des unbekannten Eingangs mit allen bekannten Klassen diejenige mit der höchsten Übereinstimmung (oder keine im Fall eines Negativbeispiels) gewählt werden.
+		
+	\subsubsection{Aufbau des Netzes}
+	 Bei einem Siamesischen Netzwerk handelt es sich um ein zweistufiges Netz, bestehend aus zwei Faltungsnetzen mit identischen Gewichten in der ersten Stufe, deren Ergebnis-Vektoren in der zweiten Stufe durch ein zusammenfassendes mehrlagiges Perzeptron in einen einzelnen Ähnlichkeits-Wert umgerechnet werden.
+	 Die Faltungsnetze dienen dabei der Dimensionsreduktion - sie reduzieren den Eingangstensor auf einen Festure-Vektor und komprimieren damit die zur Verfügung stehende Information \todo{weiter}
+	 
+	 
+	 
+	 \begin{figure}
+	 	\centering
+	 	\input{Ressourcen/siamese_network}
+	 	\caption{Aufbau eines siamesischen Netzwerkes}
+	 	\label{fig:siamesenetwork}
+	 \end{figure}
+	 
+	 
+	 \subsubsection{Training}
+	 Aufgrund des zweistufigen Aufbaus kann auch das Training des Netzes in zwei Stufen erfolgen.
+	 
+	 \subsubsection{Kostenfunktion: Triplet Loss}
+	 Da das Netzwerk \todo{weiter}
+	 
+
+	
+	Hierfür kann ein Siamesisches Netzwerk (en.: siamese network) genutzt werden. 
 	
 \section { Anatomie der menschlichen Hand }
 	Die Bewegungsfreiheit der einzelnen Handglieder unterliegt anatomischen Beschränkungen, die in der Posenschätzung nützlich sein können, um die Güte der Schätzung zu beurteilen und mit einem passenden Modell entsprechend verfeinern zu können \cite{Melax5222017}.
@@ -143,4 +172,10 @@
 	
 	
 	\subsection{title}
+	
+	
+\section{Kameraparameter}
+\subsection{Intrinsische Parameter}
+Die intrinsischen Paramter einer Kamera sind definiert durch die Brennweite $f$, das Format des Bildsensors und 
+\subsection{Extrinsische Parameter}
 	
