@@ -34,8 +34,8 @@ def get_dataset(path, img_dim=None):
         :param path: root path to the dataset
         :param img_dim: tuple (height, width) of the requested data set
     """
-    list_ds = tf.data.Dataset.list_files(os.path.join(path, '*/skeleton.txt'))
-    skeleton_data = list_ds.flat_map(__read_skeleton_file)
+    list_ds = tf.data.Dataset.list_files(os.path.join(path, '*/skeleton.txt')).cache()
+    skeleton_data = list_ds.flat_map(__read_skeleton_file, num_parallel_calls=tf.data.experimental.AUTOTUNE).cache()
     full_ds = skeleton_data.map(__get_corresponding_images)
     if img_dim is not None:
         full_ds = full_ds.map(lambda img, skel: (tf.image.resize(img, tf.constant([img_dim[0], img_dim[1]], dtype=tf.dtypes.int32)), skel))
