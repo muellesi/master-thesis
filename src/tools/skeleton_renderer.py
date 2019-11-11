@@ -107,3 +107,22 @@ def __draw2djoints_cv(img, joints, links, alpha=1):
                     c=colors[finger_idx],
                     alpha=alpha)
     return img
+
+
+def project_world_to_cam(skel, cam_extrinsics):
+    skel_hom = np.concatenate([skel, np.ones([skel.shape[0], 1])], 1)
+    skel_camcoords = cam_extrinsics.dot(
+            skel_hom.transpose()).transpose()[:, :3].astype(np.float32)
+    return skel_camcoords
+
+
+def project_2d(skel, cam_intrinsics):
+    """"
+        Projects a given skeleton from 3d to 2d, using the given camera intrinsics
+        Basic code source: https://github.com/guiggh/hand_pose_action/blob/master/load_example.py#L147
+        :param skel: Ax3 coordinate matrix of the skeleton with A joints
+        :param cam_intrinsics: 4x3 camera intrinsics matrix
+    """
+    skel_hom2d = np.array(cam_intrinsics).dot(skel.transpose()).transpose()
+    skel_proj = (skel_hom2d / skel_hom2d[:, 2:])[:, :2]
+    return skel_proj
