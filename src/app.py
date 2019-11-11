@@ -37,11 +37,40 @@ input_target_height = 128
 
 # pose estimation settings
 # training:
-train_pose_model = False
-pose_train_data_dir = r"E:\MasterDaten\Datasets\FHAD"
+train_pose_model = True
+
+dataset_source = 'NYU'
+
+pose_train_data_dir = {
+        'FHAD': r"E:\MasterDaten\Datasets\FHAD",
+        'NYU': r"G:\master_thesis_data\Datasets\nyu\nyu_hand_dataset_v2\dataset"
+        }
+pose_train_data_dir = pose_train_data_dir[dataset_source]
+
+if dataset_source == 'NYU':
+    from tools import NYU as selected_dataset
+elif dataset_source == 'FHAD':
+    from tools import FHAD as selected_dataset
+
 pose_batch_size = 50
-pose_epochs = 40
+pose_epochs = 400
 pose_data_scale = 1 / 2 ** 16
+
+
+def prepare_dataset(ds):
+    return ds.map(
+            lambda img, skel: (tf.image.resize(img, tf.constant([input_target_height, input_target_width], dtype=tf.dtypes.int32)), skel),
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).map(
+            lambda img, skel: (img, skel + tf.constant(2500.0, dtype=tf.float32)))
+
+
+def overlay_skeleton(img, skel_cam_coord):
+    skeleton_2d = tools.skeleton_renderer.project_2d(skel_cam_coord, selected_dataset.get_camera_intrinsics())
+    minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(img)
+    image2 = cv2.convertScaleAbs(img, alpha=255 / maxVal)
+    image2 = cv2.applyColorMap(image2, cv2.COLORMAP_PARULA)
+    tools.render_skeleton(image2, skeleton_2d, joint_names=selected_dataset.get_joint_names())
+    return image2
 
 
 def main(argv):
@@ -50,33 +79,38 @@ def main(argv):
 
     if train_pose_model:
         logger.info("Hand pose training is active. Collecting dataset...")
-        hand_pose_dataset = tools.FHAD.get_dataset(pose_train_data_dir, (input_target_height, input_target_width))
-
-        index = 1
-        # Plot everything
-        fig = plt.figure()
-        for img, skel in hand_pose_dataset.take(25):
-            ax = fig.add_subplot(5, 5, index)
-            np_img = img.numpy()
-            np_img = np_img.reshape(input_target_height, input_target_width)
-            # np.save("testimg", np_img)
-            ax.imshow(np_img)
-            np_skel = skel.numpy()
-            np_skel = np_skel.reshape(21, -1)
-            _, skel_proj = tools.FHAD.project_skeleton(np_skel, use_cam_intr='depth')
-            # np.save("testskel", skel_proj)
-            tools.render_skeleton(ax, skel_proj, joint_idxs=True)
-            index += 1
+        hand_pose_dataset = selected_dataset.get_dataset(pose_train_data_dir, 'train')
+        hand_pose_dataset_val = selected_dataset.get_dataset(pose_train_data_dir, 'validation')
 
         logger.info("Preparing dataset...")
+        # hand_pose_dataset = prepare_dataset(hand_pose_dataset)
+        # hand_pose_dataset_val = prepare_dataset(hand_pose_dataset_val)
+
+        win_name = "my_window"
+        cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)
+        cv2.setMouseCallback(win_name, mouse_callback, None)
+
+        for img, skel in hand_pose_dataset.take(50000):
+            img = img.numpy()
+            skel = skel.numpy().reshape((21, -1))
+            # skel = skel - 2500
+
+            # for joint in skeleton_2d:
+            #     joint[0] = joint[0] * input_target_width / 640
+            #     joint[1] = joint[1] * input_target_height / 480
+
+            cv2.imshow(win_name, cv2.UMat(overlay_skeleton(img, skel)))
+            cv2.waitKey(30)
+        cv2.destroyAllWindows()
+
         hand_pose_dataset = hand_pose_dataset.shuffle(1000).batch(batch_size=pose_batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+        hand_pose_dataset_val = hand_pose_dataset_val.batch(batch_size=pose_batch_size).prefetch(tf.data.experimental.AUTOTUNE)
 
-        # https://medium.com/coinmonks/beginners-guide-to-feeding-data-in-tensorflow-part2-5e2506d75429
         logger.info("Starting training...")
-        models.hand_pose_estimator.train_model(pose_model, hand_pose_dataset, pose_batch_size, pose_epochs)
+        models.hand_pose_estimator.train_model(pose_model, hand_pose_dataset, pose_batch_size, pose_epochs, hand_pose_dataset_val)
 
-    # TODO: load model for gesture recognition
-    # gesture_model = gc.make_model()
+        # TODO: load model for gesture recognition
+        # gesture_model = gc.make_model()
 
     camera = None
     while camera is None:
@@ -87,14 +121,6 @@ def main(argv):
             logger.error(e)
     presets = camera.get_depth_presets()
     camera.set_depth_preset(presets["High Accuracy"])
-
-    # TODO: Segment hand from input image
-    # segmentation_filter = tools.RdfHandSegmenter()
-    # segmentation_filter.fit_tree()
-    # segmentation_filter = tools.SimpleHandSegmenter()
-
-    # TODO: estimate pose from segmented hand
-    # TODO: classify gesture from stream of po0ses and react accordingly
 
     win_name = "my_window"
     cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)
@@ -114,19 +140,11 @@ def main(argv):
 
         skeleton = models.hand_pose_estimator.estimate_pose(pose_model, model_input)
         skeleton = skeleton.reshape((21, -1))
+        skeleton = skeleton - 2500
 
-        _, skeleton_2d = tools.FHAD.project_skeleton(skeleton)
-        for joint in skeleton_2d:
-            joint[0] = joint[0] * input_target_width/640
-            joint[1] = joint[1] * input_target_height/480
-        logger.info(skeleton_2d)
-        minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(last_frame_depth)
-        image2 = cv2.convertScaleAbs(last_frame_depth2, alpha=255 / maxVal)
-        image2 = cv2.applyColorMap(image2, cv2.COLORMAP_PARULA)
+        # TODO: classify gesture from stream of poses and react accordingly
 
-        tools.render_skeleton(image2, skeleton_2d, joint_names=tools.FHAD.get_joint_names())
-
-        cv2.imshow(win_name, cv2.UMat(image2))
+        cv2.imshow(win_name, cv2.UMat(overlay_skeleton(last_frame_depth2, skeleton)))
         key = cv2.waitKey(1)
 
 
