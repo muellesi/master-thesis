@@ -27,7 +27,7 @@ def __get_corresponding_images(skeleton_path, frame_index, skeleton):
     return tf.io.decode_png(tf.io.read_file(img_path), dtype=tf.dtypes.uint16), skeleton
 
 
-def get_dataset(path, img_dim=None):
+def get_dataset(path, subset='train', img_dim=None):
     """"
         Returns a tf.data.DataSet for the FHAD dataset
         Dataset source: https://arxiv.org/abs/1704.02463 "First-Person Hand Action Benchmark with RGB-D Videos and 3D Hand Pose Annotations"
@@ -35,10 +35,11 @@ def get_dataset(path, img_dim=None):
         :param img_dim: tuple (height, width) of the requested data set
     """
     list_ds = tf.data.Dataset.list_files(os.path.join(path, '*/skeleton.txt')).cache()
-    skeleton_data = list_ds.flat_map(__read_skeleton_file, num_parallel_calls=tf.data.experimental.AUTOTUNE).cache()
-    full_ds = skeleton_data.map(__get_corresponding_images)
+    skeleton_data = list_ds.flat_map(__read_skeleton_file).cache()
+    full_ds = skeleton_data.map(__get_corresponding_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     if img_dim is not None:
-        full_ds = full_ds.map(lambda img, skel: (tf.image.resize(img, tf.constant([img_dim[0], img_dim[1]], dtype=tf.dtypes.int32)), skel))
+        full_ds = full_ds.map(lambda img, skel: (tf.image.resize(img, tf.constant([img_dim[0], img_dim[1]], dtype=tf.dtypes.int32)), skel),
+                              num_parallel_calls=tf.data.experimental.AUTOTUNE)
     # train_ds = full_ds.filter(lambda path, _, _: any(tf.strings.))
     return full_ds
 
@@ -63,20 +64,14 @@ def get_column_names():
     return [["{}_{}".format(joint, axis) for axis in ["x", "y", "z"]] for joint in joint_names]
 
 
-def project_skeleton(skel, use_cam_intr='depth'):
-    """"
-    Projects a given FHAD skeleton from world coordinates to camera coordinates/into the 2D plane
+def get_camera_intrinsics(use_cam_intr='depth'):
+    """
+    Returns the respective (rgb/depth) camera's intrinsic matrix
     source: https://github.com/guiggh/hand_pose_action/blob/master/load_example.py#L147
-    :param skel: List of skeleton joint coordinates (see get_column_names())
     :param use_cam_intr: One of 'depth' or 'rgb'. Switches to the correct camera intrinsics, according to https://github.com/guiggh/hand_pose_action#camera-parameters
-    :return: tuple (skel_camcoords, skel_proj_2d)
+    :return: camera intrinsics
     """
     # see https://github.com/guiggh/hand_pose_action/blob/master/load_example.py#L113
-    cam_extr = np.array(
-            [[0.999988496304, -0.00468848412856, 0.000982563360594, 25.7],
-             [0.00469115935266, 0.999985218048, -0.00273845880292, 1.22],
-             [-0.000969709653873, 0.00274303671904, 0.99999576807, 3.902],
-             [0, 0, 0, 1.0]])
 
     if use_cam_intr == 'rgb':
         cam_intr = np.array([[1395.749023, 0, 935.732544],
@@ -87,10 +82,18 @@ def project_skeleton(skel, use_cam_intr='depth'):
                              [0, 475.065857, 245.287079],
                              [0, 0, 1]])
 
-    skel_hom = np.concatenate([skel, np.ones([skel.shape[0], 1])], 1)
-    skel_camcoords = cam_extr.dot(skel_hom.transpose()).transpose()[:, :3].astype(np.float32)
+    return cam_intr
 
-    skel_hom2d = np.array(cam_intr).dot(skel_camcoords.transpose()).transpose()
-    skel_proj = (skel_hom2d / skel_hom2d[:, 2:])[:, :2]
 
-    return skel_camcoords, skel_proj
+def get_camera_extrinsics():
+    """
+    Returns the camera's extrinsic matrix
+    source: https://github.com/guiggh/hand_pose_action/blob/master/load_example.py#L147
+    :return: camera extrinsics
+    """
+    cam_extr = np.array(
+            [[0.999988496304, -0.00468848412856, 0.000982563360594, 25.7],
+             [0.00469115935266, 0.999985218048, -0.00273845880292, 1.22],
+             [-0.000969709653873, 0.00274303671904, 0.99999576807, 3.902],
+             [0, 0, 0, 1.0]])
+    return cam_extr
