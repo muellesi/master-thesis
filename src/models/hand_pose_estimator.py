@@ -56,7 +56,7 @@ def make_model(input_shape=(256, 256, 1), output_shape=63):  # default output sh
     return model
 
 
-def train_model(model, train_data, batch_size, max_epochs, validation_gen=None):
+def train_model(model, train_data, batch_size, max_epochs, validation_data=None):
     model.compile(optimizer=keras.optimizers.Adam(0.0001), loss=keras.losses.mean_squared_error, metrics=["mae", "acc"])
 
     if not os.path.exists(__checkpoint_dir): os.makedirs(__checkpoint_dir)
@@ -67,12 +67,12 @@ def train_model(model, train_data, batch_size, max_epochs, validation_gen=None):
             save_best_only=False)
     tensorboard = keras.callbacks.TensorBoard(log_dir=__tensorboard_dir, histogram_freq=0,
                                               write_graph=True, write_images=True, update_freq='batch', profile_batch=0)
-    prog = keras.callbacks.ProgbarLogger(count_mode='steps')
     model.fit(
             train_data,
+            validation_data=validation_data,
             epochs=max_epochs,
             verbose=2,
-            callbacks=[checkpointer, tensorboard, prog])
+            callbacks=[checkpointer, tensorboard])
 
 
 def estimate_pose(model, depth_img):
