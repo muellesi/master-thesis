@@ -93,7 +93,7 @@ def __open_tf_record(filename):
     return tfrecord.map(tfrh.parse_standard_pose_record)
 
 
-def get_dataset(dataset_location, subset="train", img_dim=None):
+def get_dataset(dataset_location, subset="train"):
     """"
         Returns a tf.data.DataSet for the NYU dataset
 
@@ -104,7 +104,6 @@ def get_dataset(dataset_location, subset="train", img_dim=None):
 
         :param subset: 'train', 'validation' or 'test'
         :param dataset_location: root path to the nyu dataset
-        :param img_dim: tuple (height, width) of the requested data set
     """
     tfrecord_basepath = os.path.abspath(os.path.join(dataset_location, 'tfrecord_data'))
 
