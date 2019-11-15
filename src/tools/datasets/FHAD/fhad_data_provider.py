@@ -116,6 +116,7 @@ def get_dataset(dataset_location, subset='train'):
 
         :param subset: 'train', 'validation' or 'test'
         :param dataset_location: root path to the FHAD dataset
+        :return: img_width, img_height, dataset
     """
     tfrecord_basepath = os.path.abspath(os.path.join(dataset_location, 'tfrecord_data'))
 
@@ -128,7 +129,7 @@ def get_dataset(dataset_location, subset='train'):
                .flat_map(__open_tf_record)
                .map(__decode_img, num_parallel_calls=tf.data.experimental.AUTOTUNE))
 
-    return dataset
+    return 640, 480, dataset
 
 
 def get_joint_names():

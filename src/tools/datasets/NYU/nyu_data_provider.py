@@ -116,7 +116,7 @@ def get_dataset(dataset_location, subset="train"):
                .flat_map(__open_tf_record)
                .map(__decode_img, num_parallel_calls=tf.data.experimental.AUTOTUNE))
 
-    return dataset
+    return 640, 480, dataset
 
 
 def get_joint_names():
@@ -158,7 +158,6 @@ def get_camera_intrinsics():
 def get_camera_extrinsics():
     """
     Returns the camera's extrinsic matrix
-    source: https://github.com/guiggh/hand_pose_action/blob/master/load_example.py#L147
     :return: camera extrinsics
     """
     raise NotImplementedError("No extrinsics known for NYU dataset!")

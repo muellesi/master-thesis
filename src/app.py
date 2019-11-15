@@ -21,13 +21,13 @@ last_frame_depth = None
 last_frame_rgb = None
 
 
-def mouse_callback(event, x, y, flags, param):
+def mouse_callback(x, y, img, event):
     if event == cv2.EVENT_LBUTTONDOWN:
         pass
     elif event == cv2.EVENT_LBUTTONUP:
         pass
     elif event == cv2.EVENT_MOUSEMOVE:
-        logger.info(last_frame_depth[y][x])
+        logger.info(img[y][x])
 
 
 input_record_width = 1280
@@ -38,12 +38,15 @@ input_target_height = 128
 # pose estimation settings
 # training:
 train_pose_model = True
-test_pose_model = True
+test_pose_model = False
+display_dataset_before_training = False
+
 dataset_source = 'NYU'
 
 pose_train_data_dir = {
         'FHAD': r"E:\MasterDaten\Datasets\FHAD",
-        'NYU': r"G:\master_thesis_data\Datasets\nyu\nyu_hand_dataset_v2\dataset"
+        'NYU': r"G:\master_thesis_data\Datasets\nyu\nyu_hand_dataset_v2\dataset",
+        'MSRA': r"E:\MasterDaten\Datasets\cvpr15_MSRAHandGestureDB"
         }
 pose_train_data_dir = pose_train_data_dir[dataset_source]
 
@@ -51,11 +54,12 @@ if dataset_source == 'NYU':
     from tools import NYU as selected_dataset
 elif dataset_source == 'FHAD':
     from tools import FHAD as selected_dataset
+elif dataset_source == 'MSRA':
+    from tools import MSRA as selected_dataset
 
 pose_batch_size = 128
-pose_epochs = 400
-pose_data_scale = 1 / 2 ** 16
-pose_learning_rate = 0.0001
+pose_epochs = 1000000
+pose_learning_rate = 0.00001
 
 
 def overlay_skeleton(img, skel_cam_coord, skew_factor=None):
@@ -70,11 +74,31 @@ def overlay_skeleton(img, skel_cam_coord, skew_factor=None):
 
 
 def prepare_dataset(ds):
-    return ds.map(
-            lambda img, skel: (tf.image.resize(img, tf.constant([input_target_height, input_target_width], dtype=tf.dtypes.int32)), skel),
-            num_parallel_calls=tf.data.experimental.AUTOTUNE).map(
-            lambda img, skel: (tf.cast(img, dtype=tf.float32) / tf.constant(5000, dtype=tf.float32),
-                               (skel + tf.constant(2500.0, dtype=tf.float32)) / tf.constant(5000.0, dtype=tf.float32)))
+    ds = ds.map(lambda img, skel: (
+            tf.clip_by_value(tf.cast(tf.image.resize(img, tf.constant([input_target_height, input_target_width], dtype=tf.dtypes.int32)),
+                                     dtype=tf.float32), clip_value_min=0.0, clip_value_max=1.0) / tf.constant(2500.0, dtype=tf.float32),
+            skel), num_parallel_calls=tf.data.experimental.AUTOTUNE)  # ignore stuff more than 2.5m away.
+    return ds
+
+
+def augment_pose_dataset(ds):
+    ds = ds.map(tools.pose_augmentation.flip_randomly, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    return ds
+
+
+def display_from_pose_dataset(ds, num_samples=1000, fps=30, ds_img_width=640, ds_img_height=480):
+    win_name = "Displaying {} from dataset {} at {}fps".format(num_samples, ds, fps)
+    cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)
+    depth = None
+    cv2.setMouseCallback(win_name, lambda event, x, y, flags, param: mouse_callback(x, y, depth, event))
+    for img, skel in ds.take(num_samples):
+        img = img.numpy()
+        depth = img
+        skel = skel.numpy().reshape((21, -1))
+        cv2.imshow(win_name, cv2.UMat(overlay_skeleton(img, skel, (input_target_height / ds_img_height, input_target_width / ds_img_width))))
+        while cv2.waitKey(int(1000 / fps)) == 32:  # playback can be paused with space bar
+            pass
+    cv2.destroyAllWindows()
 
 
 def main(argv):
@@ -83,27 +107,20 @@ def main(argv):
 
     if train_pose_model:
         logger.info("Hand pose training is active. Collecting dataset...")
-        hand_pose_dataset = selected_dataset.get_dataset(pose_train_data_dir, 'train')
-        hand_pose_dataset_val = selected_dataset.get_dataset(pose_train_data_dir, 'validation')
+        ds_img_width, ds_img_height, hand_pose_dataset = selected_dataset.get_dataset(pose_train_data_dir, 'train')
+        _, _, hand_pose_dataset_val = selected_dataset.get_dataset(pose_train_data_dir, 'validation')
 
         logger.info("Preparing dataset...")
+
+        hand_pose_dataset = augment_pose_dataset(hand_pose_dataset)
         hand_pose_dataset = prepare_dataset(hand_pose_dataset)
-        hand_pose_dataset_val = prepare_dataset(hand_pose_dataset_val)
-
-        # win_name = "my_window"
-        # cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)
-        # for img, skel in hand_pose_dataset.take(50000):
-        #         #     img = img.numpy()
-        #         #     skel = skel.numpy().reshape((21, -1))
-        #         #     skel = skel * 5000.0 - 2500.0
-        #         #     cv2.imshow(win_name, cv2.UMat(overlay_skeleton(img, skel, (input_target_height / 480, input_target_width / 640))))
-        #         #     cv2.waitKey(1)
-        #         # cv2.destroyAllWindows()
-
+        if display_dataset_before_training:
+            display_from_pose_dataset(hand_pose_dataset, ds_img_width=ds_img_width, ds_img_height=ds_img_height)
         hand_pose_dataset = hand_pose_dataset.shuffle(pose_batch_size * 10)
-
-        hand_pose_dataset_val = hand_pose_dataset_val.batch(batch_size=pose_batch_size).prefetch(tf.data.experimental.AUTOTUNE)
         hand_pose_dataset = hand_pose_dataset.batch(batch_size=pose_batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+
+        hand_pose_dataset_val = prepare_dataset(hand_pose_dataset_val)
+        hand_pose_dataset_val = hand_pose_dataset_val.batch(batch_size=pose_batch_size).prefetch(tf.data.experimental.AUTOTUNE)
 
         logger.info("Starting training...")
         models.hand_pose_estimator.train_model(pose_model, hand_pose_dataset, pose_batch_size, pose_epochs, pose_learning_rate, hand_pose_dataset_val)
@@ -113,20 +130,21 @@ def main(argv):
 
     if test_pose_model:
         logger.info("Hand pose test is active. Collecting dataset...")
-        hand_pose_dataset_test = selected_dataset.get_dataset(pose_train_data_dir, 'test')
+        ds_img_width, ds_img_height, hand_pose_dataset_test = selected_dataset.get_dataset(pose_train_data_dir, 'test')
 
         logger.info("Preparing dataset...")
         hand_pose_dataset_test = prepare_dataset(hand_pose_dataset_test)
 
         win_name = "my_window"
         cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)
-
         for img, skel in hand_pose_dataset_test.take(50000):
             skeleton = models.hand_pose_estimator.estimate_pose(pose_model, img.numpy().reshape((-1, 128, 128, 1)))
             skeleton = skeleton.reshape((21, -1))
-            skeleton = skeleton - 2500
-            cv2.imshow(win_name, cv2.UMat(overlay_skeleton(img.numpy(), skeleton, (input_target_height / 480, input_target_width / 640))))
-            cv2.waitKey(300)
+            cv2.imshow(win_name,
+                       cv2.UMat(overlay_skeleton(img.numpy(), skeleton, (input_target_height / ds_img_height, input_target_width / ds_img_width))))
+
+            while cv2.waitKey(150) == 32:
+                pass
         cv2.destroyAllWindows()
 
     camera = None
@@ -148,7 +166,6 @@ def main(argv):
     global last_frame_rgb
 
     cv2.setMouseCallback(win_name, mouse_callback, None);
-
     for i in range(9999):
         last_frame_time, last_frame_depth, last_frame_rgb = camera.get_frame()
 
@@ -157,12 +174,13 @@ def main(argv):
 
         skeleton = models.hand_pose_estimator.estimate_pose(pose_model, model_input)
         skeleton = skeleton.reshape((21, -1))
-        skeleton = skeleton - 2500
 
         # TODO: classify gesture from stream of poses and react accordingly
 
         cv2.imshow(win_name, cv2.UMat(overlay_skeleton(last_frame_depth2, skeleton, (input_target_height / 480, input_target_width / 640))))
-        key = cv2.waitKey(1)
+
+        while cv2.waitKey(150) == 32:
+            pass
 
 
 def train_pose_estimation():
