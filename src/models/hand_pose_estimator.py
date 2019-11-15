@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import tools
 import os
+import math
 
 
 
@@ -22,12 +23,15 @@ def __try_load_checkpoint(model, checkpoint_dir: str):
         cp_files = [path for path in cp_files if os.path.isfile(path) and __checkpoint_file_prefix in os.path.basename(path)]
 
         if len(cp_files) > 0:
-            latest_file = max(cp_files, key=os.path.getctime)
-
-            try:
-                model.load_weights(latest_file)
-            except Exception as e:
-                __logger.exception(e)
+            files_sorted = sorted(cp_files, key=os.path.getctime, reverse=True)
+            for latest_file in files_sorted:
+                try:
+                    __logger.info("Trying to load weights from {}".format(latest_file))
+                    model.load_weights(latest_file)
+                    return model
+                except Exception as e:
+                    __logger.exception(e)
+                    __logger.error("Loading of {} failed!".format(latest_file))
 
     return model
 
@@ -36,19 +40,21 @@ def make_model(input_shape=(256, 256, 1), output_shape=63):  # default output sh
     encoder = tf.keras.applications.MobileNetV2(input_shape=input_shape,
                                                 include_top=False,
                                                 weights=None)  # 'imagenet')
-    # encoder.trainable = False
+    encoder.trainable = True
 
     model = tf.keras.models.Sequential()
     model.add(encoder)
     model.add(tf.keras.layers.Flatten())
-    model.add(tf.keras.layers.Dense(2048))
+    model.add(tf.keras.layers.Dense(2048, kernel_initializer=tf.keras.initializers.GlorotNormal(), bias_initializer='zeros'))
     model.add(tf.keras.layers.Activation('relu'))
-    model.add(tf.keras.layers.Dropout(0.5))
-    model.add(tf.keras.layers.Dense(1024))
-    model.add(tf.keras.layers.Activation('relu'))
-    model.add(tf.keras.layers.Dropout(0.5))
-    model.add(tf.keras.layers.Dense(output_shape))
-    model.add(tf.keras.layers.Activation('relu'))
+    # model.add(tf.keras.layers.Dropout(0.2))
+    # model.add(tf.keras.layers.Dense(40))
+    # model.add(tf.keras.layers.Activation('relu'))
+    # model.add(tf.keras.layers.Dropout(0.5))
+    model.add(tf.keras.layers.Dense(1024, kernel_initializer=tf.keras.initializers.GlorotNormal(), bias_initializer='zeros'))
+    model.add(tf.keras.layers.Activation('tanh'))
+    # model.add(tf.keras.layers.Dropout(0.2))
+    model.add(tf.keras.layers.Dense(output_shape, kernel_initializer=tf.keras.initializers.Orthogonal(gain=100.0), bias_initializer='zeros'))
     model.summary()
 
     model = __try_load_checkpoint(model, __checkpoint_dir)
@@ -56,12 +62,9 @@ def make_model(input_shape=(256, 256, 1), output_shape=63):  # default output sh
 
 
 def train_model(model, train_data, batch_size, max_epochs, learning_rate=0.0001, validation_data=None):
-    optimizer = tf.keras.optimizers.Adam(
-            learning_rate=learning_rate,
-            beta_1=0.9,
-            beta_2=0.999,
-            epsilon=0.1
-            )
+    tools.clean_tensorboard_logs(__tensorboard_dir)
+
+    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
     model.compile(optimizer=optimizer, loss=tf.keras.losses.mean_squared_error, metrics=["mae", "acc"])
 
     if not os.path.exists(__checkpoint_dir): os.makedirs(__checkpoint_dir)
@@ -72,12 +75,26 @@ def train_model(model, train_data, batch_size, max_epochs, learning_rate=0.0001,
             save_best_only=False)
     tensorboard = tf.keras.callbacks.TensorBoard(log_dir=__tensorboard_dir, histogram_freq=0,
                                                  write_graph=True, write_images=True, update_freq='batch', profile_batch=0)
+
+
+    def scheduler(epoch):
+        if epoch < 10:
+            tf.print("Learning rate in epoch ", epoch, ": ", learning_rate)
+            return float(learning_rate)
+        else:
+            lr = learning_rate * math.exp(0.1 * (10.0 - epoch))
+            tf.print("Learning rate in epoch ", epoch, ": ", lr)
+            return lr
+
+
+    lr_decay = tf.keras.callbacks.LearningRateScheduler(scheduler)
+
     model.fit(
             train_data,
             validation_data=validation_data,
             epochs=max_epochs,
             verbose=2,
-            callbacks=[checkpointer, tensorboard])
+            callbacks=[checkpointer, tensorboard]) # no decay for now...
 
 
 def estimate_pose(model, depth_img):
