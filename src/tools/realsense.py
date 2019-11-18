@@ -26,8 +26,8 @@ class RealsenseCamera:
         self.pipeline = rs.pipeline()
         self.camera_config = rs.config()
 
-        self.camera_config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 15)
-        self.camera_config.enable_stream(rs.stream.color, 1280, 720, rs.format.rgb8, 15)
+        self.camera_config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 15)
+        self.camera_config.enable_stream(rs.stream.color, 640, 480, rs.format.rgb8, 15)
 
         # Start streaming
         self.pipeline.start(self.camera_config)
