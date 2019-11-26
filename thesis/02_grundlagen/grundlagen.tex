@@ -1,44 +1,92 @@
 \section { Computer Vision }
-	\subsection { Kameraparameter }
+	\subsection { The pinhole camera model }
+		Cameras project 3-dimensional scenes onto a 2-dimensional plane - the image plane.
+		The overall projection of a single point in space (given in a world copordinate system) to the image plane can be divided into two independent successive operations \cite[S.~50]{Szeliski2010}:
+		
+		\subsubsection{Extrinsic parameters}
+		A camera's extrinsic parameters describe its position and pose relative to the world coordinate system. For a simple pinhole camera those parameters are given with 
+		
+		\begin{equation}
+		\matr{C} = \begin{bmatrix}
+					\matr{R}_{3\times 3} & T_{3\times 1}\\
+					0_{1\times 3} & 1
+					\end{bmatrix}_{4\times 4} = -\matr{R}^{-1}T = -\matr{R}^TT \, . 
+		\end{equation}
+		$\matr{R}_{3\times 3}$ is a rotation matrix that represents the camera's rotation relative to the world coordinate system and T is the position of the world coordinate system, given in the new, camera-centered coordinate system. 
+
+		\subsection{Intrinsic parameters}
+		A camera intrinsic parameters reflect its internal structure and depend on focal length $f_{2\times 1}$, size of the image sensor and the principal point $c_{2\times1}$ which is defined as the intersection of the camera's optical axis with the image plane, denoted in pixel coordinates. This point ideally corresponds with the image sensor's center but might be slightly offset because of small misalignments within the camera.
+		
+		All in all this results in the camera's intrinsic matrix
+		\begin{equation}
+		\matr{K} =	\begin{bmatrix}
+			f_x & s & c_x & 0 \\
+			0 & f_y & c_y & 0 \\
+			0 & 0 & 1 & 0
+			\end{bmatrix}.
+		\end{equation}
+		The factor $s$ encodes any possible skew that might be introduced through misalignments between the camera's sensor and its optical axis and can typically be set to $0$ without affecting the approximation of the camera model too much.
+		
+		\subsection{Combined model}
+		Combined, the intrinsic and extrinsic matrices lead to a camera matrix \cite{Szeliski2010}:
+		
+		\begin{equation}
+		\matr{P} = \begin{bmatrix}\matr{K} & 0\\\matr{0}^T & 1\end{bmatrix}
+		\begin{bmatrix}\matr{R} & T\\\matr{0}^T & 1\end{bmatrix}
+		\end{equation}
+		
+		which maps a point $p_w = \left(x_w, y_w, z_w, 1\right)$ given in world coordinates to screen coordinates and disparity $d$, $p_s = \left(x_s, y_s, 1, d\right)$.
+		
+		
 	\subsection { Segmentierung }
 		
 
 	
 \section { Machine Learning }
-	In den letzen Jahren gab es stetige Fortschritte in der Leistungsfähigkeit von Rechenhardware und damit einhergehend im Bereich des maschinellen Lernens (en. machine learning).
-	In diesem Abschnitt werden kurz die in der Arbeit genutzten machine-learning Techniken aufgezeigt und erläutert.
-	
+
+		
+	In recent years, there has been steady progress in the performance of computing hardware and thus in the area of machine learning.
+In this section the machine-learning techniques used in the work are briefly shown and explained.
+
 	\subsection { Neuronale Netze }
-	Künstliche Neuronale Netze (en.: artificial neural networks, kurz: ANN) sind der biologischen Funktionsweise menschlicher Nervenbahnen nachempfunden. 
-	
+	Artificial neural networks 	are modeled on the biological function of human nerve tracts.
+
 		\subsubsection { Das Perzeptron }
-		Das einlagige Perzeptron, der einfachste Fall eines neuronalen Netzes, besteht aus drei Schichten von jeweils beliebig vielen Recheneinheiten, die als Neuronen bezeichnet werden. Alle Neuronen sind dabei mit allen Neuronen der nachfolgenden Schicht über eine gewichtete Verbindung verknüpft. 
+		\begin{figure}
+					\input{Ressourcen/simple_perceptron}
+					\centering
+			\caption{Structure of a simple multi layer perceptron with one hidden layer.}
+		\end{figure}
+		The perceptron is the simplest case of a neural network. It consists of at least two layers with any number of arithmetic units called neurons with the first and last layer playing a special role since they are connected to the "`outside"' and transfer data into and out of the network. The layers in between are called "`hidden layers"'.
 		
-		Die erste Schicht übernimmt im einlagigen Perzeptron die Rolle des Eingangs. Die zweite Lage wird als "`hidden layer"' bezeichnet und die dritte Schicht stellt die berechneten Ausgangsdaten zur Verfügung.
+		All neurons of one layer are fully connected to every neuron of the following layer via a weighted connection:
 		
-		Jede Recheneinheit nimmt die Daten $o_{j-1} = o_i$ aus den vorhergehenden Neuronen entgegen und berechnet einen vorläufigen Ausgangswert $p_j$ nach Gleichung \ref{eq:perceptron_simple}. 
+		Each arithmetic unit in layer $j$ takes the data $o_{j-1} = o_i$ from the preceding neurons and calculates a preliminary output value $net_j$ by multiplying each input with the corresponding weights $w_{ij}$:
+		
+		 \ref{eq:perceptron_simple}. 
 		
 		\begin{equation}
 			\label{eq:perceptron_simple}
-			\text{net}_j = \sum_{i=1}^{n} w_{ij} \cdot o_i + b
+			\text{net}_j = \sum_{i=1}^{n} w_{ij} \cdot o_i + b \, . 
 		\end{equation}
 		
-		Die Gewichte $w_{xy}$ und Bias-Werte $b_x$ werden im Trainingsprozess anhand der Trainingsdaten optimiert und ändern sich nach dem Training nicht mehr.
+		The weights $w_{xy}$ and bias values $b_x$ are optimized in the training process to approximate the training data as close as possible and will not change after the training.
 		
 		
-		Die Summe der Produkte wird anschließend über eine nichtlineare Aktivierungsfunktion gefiltert und daraufhin in die nächste Schicht weitergereicht:
+		The inputs for the next layer are then calculated by filtering the preliminary results through a non-linear activation function,
 		
 		\begin{equation}
 		\label{eq:perceptron_act}
-		o_j = \varphi\left(\text{net}_j\right)
+		o_j = \varphi\left(\text{net}_j\right) \, . 
 		\end{equation}
 		
+
 		
 		 
 		\subsubsection { Aktivierungsfunktionen }
-		Da die grundlegenden Rechenoperationen in einem neuronalen Netz linearer Natur sind, muss eine zusätzliche Nichtlinearität eingeführt werden, um auch nichtlineare Zusammenhänge erlernen zu können. 
-		Hierfür werden unterschiedliche Aktivierungsfunktionen $\varphi$ eingesetzt, von denen einige häufig genutzte Funktionen im Folgenden erläutert werden.\\
-		
+		Since the basic arithmetic operations in a neural network are linear in nature, an additional nonlinearity must be introduced in order to learn nonlinear correlations. 
+For this purpose different activation functions $\varphi$ are used, some of which are explained in the following.\\
+
 		
 		\textbf{Schwellenwertfunktion}
 		Die Schwellenwertfunktion ist die ursprüngliche Aktivierungsfunktion für das Perzeptron nach \cite{McCulloch1943} und besitzt lediglich $0$ und $1$ als mögliche Ausgangswerte. Sie ist mit dem Schwellenwert $\epsilon$ definiert zu 
@@ -105,14 +153,14 @@
 	
 	\subsection { Spezialfälle Neuronaler Netze}
 		\subsubsection { Convolutional Neural Networks (CNN) }
-		Faltungsnetzwerke (en.: Convolutional neural networks, kurz CNN) sind ein Spezialfall der neuronalen Netze, der insbesondere für die Verarbeitung von höherdimensionalen Strukturen wie Bilder oder zeitliche Abfolgen von Daten geeignet ist. 
-		
-		In einem CNN werden zusätzlich zu den oben beschriebenen "`Dense-"' oder "`Fully-Connected-"' weitere Schichten eingesetzt, die Faltungsoperationen auf den Daten durchführen.
-		
-		Anstatt einer einfachen Multiplikation erfolgt in jeder Faltungsschicht eine Faltung des Eingangstensors mit einer Faltungsmatrix.
-		
-		Im Fall eines 2D-CNN handelt es sich bei den Eingangsdaten um eine 2D-Matrix. Eine Faltungsschicht enthält mehrere ebenfalls zweidimensionale Matrizen, die über die Eingangsmatrix geschoben werden. 
-		
+		Convolutional neural networks (\abbrev{CNN}) are a special case of neural networks that are particularly suitable for processing higher-dimensional structures such as images or temporal sequences of data. 
+
+		In a CNN, in addition to the "`dense"' or "`fully connected"' layers described above, additional layers are used that perform convolution operations on the data.
+
+		Instead of a simple multiplication, each input tensor is convoluted with a matrix in each convolution layer.
+
+		In the case of a 2D CNN, the input data is a 2D matrix and each convolution layer also contains several two-dimensional matrices, which are moved over the input matrix to calculate the output data. 
+
 		
 		\todo{Bild für Faltung}
 		

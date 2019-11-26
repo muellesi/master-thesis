@@ -1,0 +1,25 @@
+{
+  "input_image_width": 640,
+  "input_image_height": 480,
+  "data_directory": "E:\\MasterDaten\\Results",
+  "camera_settings": {
+    "file": "realsense_settings.json"
+  },
+
+  "pose_estimation": {
+    "num_network_outputs": 63,
+    "network_input_width": 250,
+    "network_input_height": 250,
+    "do_training": false,
+    "do_test": false,
+    "test_fps": 30,
+    "train": {
+      "use_dataset": "BigHands",
+      "do_show_dataset_before_training": false,
+      "batch_size": 25,
+      "epochs": 1000,
+      "learning_rate": 0.0005
+    }
+  },
+  "gesture_classification": {}
+}

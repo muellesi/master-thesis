@@ -1,0 +1,25 @@
+    encoder = tf.keras.applications.MobileNetV2(input_shape=input_shape,
+                                                include_top=False,
+                                                weights=None)  # 'imagenet')
+    encoder.trainable = True
+
+    model = tf.keras.models.Sequential()
+    model.add(encoder)
+    model.add(tf.keras.layers.Flatten())
+
+    # FC 1
+    model.add(tf.keras.layers.Dense(2048, kernel_initializer=tf.keras.initializers.GlorotNormal(), bias_initializer='zeros'))
+    model.add(tf.keras.layers.Activation('relu'))
+    #model.add(tf.keras.layers.Dropout(0.2))
+
+    # FC 2
+    model.add(tf.keras.layers.Dense(1024, kernel_initializer=tf.keras.initializers.GlorotNormal(), bias_initializer='zeros'))
+    model.add(tf.keras.layers.Activation('relu'))
+    #model.add(tf.keras.layers.Dropout(0.2))
+
+    # FC 3 - Bottleneck
+    # model.add(tf.keras.layers.Dense(40))
+    # model.add(tf.keras.layers.Activation('relu'))
+    #model.add(tf.keras.layers.Dropout(0.2))
+
+    model.add(tf.keras.layers.Dense(output_shape, kernel_initializer=tf.keras.initializers.Orthogonal(gain=100.0), bias_initializer='zeros'))

@@ -57,6 +57,9 @@ if (!(Test-Path $anaconda_path -PathType Container)) {
         Write-Output "Activating Anaconda environment $env_name..."
         conda activate $env_name
 
+        $package_path = Resolve-Path '..\' | select -ExpandProperty Path
+        conda develop $package_path
+
         if ($f) {
             Write-Output "Freezing environment in .\env\freeze.yml ..."
             conda list -e > freeze.yml

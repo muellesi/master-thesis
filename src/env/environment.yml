@@ -15,6 +15,7 @@ dependencies:
   - bzip2
   - progressbar2
   - jupyter
+  - scikit-learn
   - spyder
   - pyyaml
   - h5py

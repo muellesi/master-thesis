@@ -4,8 +4,8 @@
 \usepackage[T1]{fontenc}
 %\documentclass[12pt,a4paper,oneside]{report}
 \usepackage{graphicx}
-%\usepackage[ngerman, english]{babel} %-- uncomment this to get english titles
-\usepackage[ngerman]{babel}
+\usepackage[ngerman, english]{babel} %-- uncomment this to get english titles
+%\usepackage[ngerman]{babel}
 \usepackage{german,a4}
 %\usepackage{picins}
 %\usepackage{epsfig}
@@ -42,6 +42,10 @@
 		\mypar\textbf{\textcolor{KITgreen}{TODO: }\textcolor{red}{#1}}\mypar
 	\fi
 } 
+
+\newcommand{\matr}[1]{\mathbf{#1}} % undergraduate algebra version
+%\newcommand{\matr}[1]{#1}          % pure math version
+%\newcommand{\matr}[1]{\bm{#1}}     % ISO complying version
  
 %\theoremstyle{plain}% default
 \theoremstyle{definition}
@@ -102,25 +106,25 @@ EVITA
 % =====================================================
 % Put Titel in English
 % ===================================================== 
-%\input{00_special_pages/titelseite_en}
-%    \parindent=0pt
-%    %\sloppypar
-%    \linespread{1.2}
-%    \thispagestyle{plain}
-%    %\frontmatter
-%    %\maketitle
-
-% =====================================================
-% Put Titel in Deutsch
-% ===================================================== 
-\input{00_special_pages/titelseite}
+\input{00_special_pages/titelseite_en}
     \parindent=0pt
     %\sloppypar
     \linespread{1.2}
     \thispagestyle{plain}
     %\frontmatter
     %\maketitle
-    \cleardoublepage
+
+% =====================================================
+% Put Titel in Deutsch
+% ===================================================== 
+%\input{00_special_pages/titelseite}
+%    \parindent=0pt
+%    %\sloppypar
+%    \linespread{1.2}
+%    \thispagestyle{plain}
+%    %\frontmatter
+%    %\maketitle
+%    \cleardoublepage
     
 % =====================================================
 % Abstract
@@ -134,6 +138,8 @@ EVITA
 % ===================================================== 
     \input{00_special_pages/erklaerung}
 	\cleardoublepage
+	
+	\input{00_special_pages/danksagung}
 % =====================================================
 % TOC
 % ===================================================== 
@@ -151,11 +157,13 @@ EVITA
  \normalsize
 
     
-    \chapter{Einleitung}
+    \chapter{Introduction}
 
     \label{ch:Einleitung}    
     	\input{01_einleitung/einleitung.tex}
     \cleardoublepage
+    
+  	
     
     \chapter{Grundlagen}
     \label{ch:Grundlagen}
@@ -184,15 +192,16 @@ EVITA
 % =====================================================
 % Bibliography
 % ===================================================== 
-\nocite{*}
+%\nocite{*}
+
 %\addcontentsline{toc}{chapter}{Literaturverzeichnis, in ToC löschen}
 %\addcontentsline{toc}{chapter}{Literature}
 %\bibliographystyle{dinat}        % use a DIN style for the bibliography
-%\bibliographystyle{plain}        % use a DIN style for the bibliography
+\bibliographystyle{plain}        % use a DIN style for the bibliography
 %\bibliographystyle{abbrv}			%mit nummern in []
 %\bibliographystyle{plain}			%mit nummern in []
 %\bibliographystyle{alpha}			%3 Buchstaben + Jahr
-\bibliographystyle{alphadin}
+%\bibliographystyle{alphadin}
 
     % use external Bib-File, 
 		\bibliography{99_bib/standardbib}
