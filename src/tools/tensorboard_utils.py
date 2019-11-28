@@ -15,7 +15,7 @@ def clean_tensorboard_logs(tensorboard_dir):
     """
     __logger.info("Cleaning up tensorboard logdir {}".format(tensorboard_dir))
 
-    run_types = ["train", "validation", "test"]
+    run_types = [os.curdir, "train", "validation", "test", "plots"]
     for run_type in run_types:
         type_dir = os.path.join(tensorboard_dir, run_type)
         if os.path.exists(type_dir):
@@ -23,7 +23,8 @@ def clean_tensorboard_logs(tensorboard_dir):
                                key=os.path.getmtime)
             if len(log_files) > 0:
                 time = datetime.fromtimestamp(os.path.getmtime(log_files[0])).strftime('%Y-%m-%d_%H-%M-%S')
-                backupdir = os.path.join(type_dir, "old_runs", time)
+                backupdir = os.path.abspath(os.path.join(tensorboard_dir, os.pardir))
+                backupdir = os.path.join(backupdir, "tensorboard_old_runs", run_type, time)
                 os.makedirs(backupdir)
                 for file in log_files:
                     shutil.move(file, backupdir)
