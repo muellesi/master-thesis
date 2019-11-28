@@ -55,12 +55,12 @@ class AEOutputVisualization(tf.keras.callbacks.Callback):
             print("min: {}, max: {}".format(min, max))
 
             plots = []
-            conc = np.concatenate((data[0], pred), axis=2)
+            conc = np.concatenate((data[1], data[0], pred), axis=2)
             conc = np.squeeze(conc)
             for im in conc:
                 fig = plt.figure()
                 ax = fig.add_subplot(111)
-                ax.set_title("Original --> Output")
+                ax.set_title("Target --> Augmented Input --> Output")
                 ax.imshow(im)
                 plots.append(plot_to_image(fig))
 
