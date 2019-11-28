@@ -50,7 +50,7 @@ def make_model(input_shape=(256, 256, 1), output_shape=63, data_dir="data"):  # 
     model.summary()
 
     if data_dir:
-        model = mh.try_load_checkp oint(model=model,
+        model = mh.try_load_checkpoint(model=model,
                                        checkpoint_dir=os.path.join(data_dir, __checkpoint_dir),
                                        checkpoint_file_prefix=__checkpoint_file_prefix)
 
