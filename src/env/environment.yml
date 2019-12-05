@@ -23,5 +23,6 @@ dependencies:
   - cudnn=7.6.4
   - autopep8
   - pip
+  - lxml
   - pip:
     - pyrealsense2
