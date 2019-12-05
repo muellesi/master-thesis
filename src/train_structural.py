@@ -7,7 +7,7 @@ import tools
 import math
 from tools import training_callbacks
 import matplotlib.pyplot as plt
-
+import models.models as models
 
 
 data_dir = "E:\\MasterDaten\\Results\\structural"
@@ -17,7 +17,7 @@ net_input_width = 224
 net_input_height = 224
 batch_size = 20
 max_epochs = 2000
-learning_rate = 0.05
+learning_rate = 0.0005
 
 
 def get_filepaths(filepaths):
@@ -111,43 +111,12 @@ def get_data(data_root, val_split=0.33):
 
 
 def get_autoencoder(img_dim):
-    encoder = make_encoder(img_dim)
-    encoder.trainable = True
-    decoder = make_decoder()
-    decoder.trainable = True
-    autoenc = tf.keras.Sequential()
-    autoenc.add(encoder)
-    autoenc.add(decoder)
-    autoenc.trainable = True
-    return autoenc
-
-
-def make_encoder(img_dim):
-    encoder = tf.keras.applications.MobileNetV2(include_top=False,
-                                                weights=None,
-                                                input_shape=img_dim)
-    return encoder
-
-
-def make_decoder():
-    decoder = tf.keras.Sequential(name='decoder')
-    decoder.add(tf.keras.layers.Conv2DTranspose(128, [3, 3], strides=2, padding='same'))
-    decoder.add(tf.keras.layers.Activation(tf.keras.activations.sigmoid))
-
-    decoder.add(tf.keras.layers.Conv2DTranspose(64, [5, 5], strides=2, padding='same'))
-    decoder.add(tf.keras.layers.Activation(tf.keras.activations.sigmoid))
-
-    decoder.add(tf.keras.layers.Conv2DTranspose(16, [5, 5], strides=2, padding='same'))
-    decoder.add(tf.keras.layers.Activation(tf.keras.activations.sigmoid))
-
-    decoder.add(tf.keras.layers.Conv2DTranspose(16, [5, 5], strides=2, padding='same'))
-    decoder.add(tf.keras.layers.Activation(tf.keras.activations.sigmoid))
-
-    decoder.add(tf.keras.layers.Conv2DTranspose(1, [5, 5], strides=2, padding='same'))
-    decoder.add(tf.keras.layers.Activation(tf.keras.activations.sigmoid))
-
-    return decoder
-
+    encoder = models.make_model('imagenetv2', input_shape=img_dim)
+    decoder = models.make_model('ae-head')
+    ae = tf.keras.Sequential()
+    ae.add(encoder)
+    ae.add(decoder)
+    return ae
 
 def train_autoencoder(model, train_dataset, validation_dataset, learning_rate=0.01):
     tensorboard_dir = os.path.join(data_dir, __tensorboard_dir)
@@ -158,7 +127,7 @@ def train_autoencoder(model, train_dataset, validation_dataset, learning_rate=0.
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
     model.compile(optimizer=optimizer,
                   loss=tf.keras.losses.binary_crossentropy,
-                  metrics=["mae", "acc"])
+                  metrics=["mae", "acc", "mse"])
 
     if not os.path.exists(checkpoint_dir): os.makedirs(checkpoint_dir)
     if not os.path.exists(tensorboard_dir): os.makedirs(tensorboard_dir)
@@ -181,12 +150,12 @@ def train_autoencoder(model, train_dataset, validation_dataset, learning_rate=0.
             plot_every_x_batches=200
             )
 
-    reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.2,
-                                                     patience=5, min_lr=0.0000001)
+    reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.75,
+                                                     patience=7, min_lr=0.00000001, verbose=1)
 
     progbar = tf.keras.callbacks.ProgbarLogger(count_mode='steps')
 
-    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=15)
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=45, verbose=1)
 
     encoder_saver = tools.training_callbacks.ModelPartCheckpoint(os.path.join(checkpoint_dir, "partial"), [0, 1])
 
