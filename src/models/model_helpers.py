@@ -9,6 +9,8 @@ __logger = tools.get_logger(__name__, do_file_logging=False)
 def try_load_checkpoint(model, checkpoint_dir: str, checkpoint_file_prefix: str = ""):
     """
     Tries to load a checkpoint file for the specified model
+    :param model: model to load
+    :param checkpoint_file_prefix: prefix that is used for this model's pcheckpoints
     :param checkpoint_dir: directory where the checkpoints are saved
     :return: Model with loaded checkpoint if checkpoint existed, else unmodified model
     """
