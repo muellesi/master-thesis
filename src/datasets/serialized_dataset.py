@@ -25,20 +25,17 @@ class SerializedDataset:
                 ])
 
         self.joint_names = config["joint_names"]
-        self.data = {}
+        self.depth_width = config["depth_width"]
+        self.depth_height = config["depth_height"]
 
 
     def get_data(self, subset):
-        if self.data.get(subset) is None:
-            filenames = np.array([os.path.abspath(os.path.join(self.data_root, f))
-                                  for f in os.listdir(self.data_root) if f.startswith(subset)])
-            ds = tf.data.Dataset.from_tensor_slices(filenames).cache()
-            ds = ds.flat_map(open_tf_record)
-            ds = ds.map(decode_img, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-
-            self.data[subset] = ds
-
-        return self.data[subset]
+        filenames = np.array([os.path.abspath(os.path.join(self.data_root, f))
+                              for f in os.listdir(self.data_root) if f.startswith(subset)])
+        ds = tf.data.Dataset.from_tensor_slices(filenames).cache()
+        ds = ds.flat_map(open_tf_record)
+        ds = ds.map(decode_img, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        return ds
 
     def __str__(self):
         return "{}-{}".format(self.name, super().__str__())
