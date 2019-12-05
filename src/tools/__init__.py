@@ -4,7 +4,7 @@ from .skeleton_renderer import visualize_joints_2d as render_skeleton, project_w
 from .data_augmentation import pose_augmentation
 from .tensorboard_utils import clean_tensorboard_logs
 from .image_colorizer import colorize_tf, colorize_cv
-
+from .display_util import render_bb
 
 name = "tools"
 
