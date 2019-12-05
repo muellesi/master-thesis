@@ -43,6 +43,7 @@ class AEOutputVisualization(tf.keras.callbacks.Callback):
         self.plot_every_x_batches = plot_every_x_batches
         self.seen = 0
 
+
     def on_batch_end(self, batch, logs=None):
         self.seen += 1
         if self.seen % self.plot_every_x_batches == 0:
@@ -59,10 +60,22 @@ class AEOutputVisualization(tf.keras.callbacks.Callback):
             conc = np.squeeze(conc)
             for im in conc:
                 fig = plt.figure()
-                ax = fig.add_subplot(111)
+
+                ax = fig.add_subplot(211)
                 ax.set_title("Target --> Augmented Input --> Output")
                 ax.imshow(im)
+
+                # ax = fig.add_subplot(212)
+                # ax.set_title("Prediction only (scale different!)")
+                # localpred = im[:, -int(im.shape[1] / 3):]
+                # max_loc = np.unravel_index(np.argmax(localpred, axis=None), localpred.shape)
+                # ax.imshow(localpred)
+                # ax.annotate('max ({})'.format(localpred[max_loc]),
+                #             xy=(max_loc[1], max_loc[0]),
+                #             xytext=(int(localpred.shape[1] / 2), int(localpred.shape[0] / 2)),
+                #             arrowprops=dict(facecolor='black', shrink=0.05))
+                # fig.tight_layout()
                 plots.append(plot_to_image(fig))
 
             with self.writer.as_default():
-                tf.summary.image("Result plots", plots, step=self.seen, max_outputs=100)
+                tf.summary.image("!A Result plots", plots, step=self.seen, max_outputs=100)
