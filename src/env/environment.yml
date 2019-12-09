@@ -24,5 +24,6 @@ dependencies:
   - autopep8
   - pip
   - lxml
+  - tensorflow-probability
   - pip:
     - pyrealsense2
