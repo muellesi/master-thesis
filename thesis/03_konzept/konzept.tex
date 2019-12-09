@@ -1,17 +1,19 @@
 In diesem Kapitel wird nachfolgend das grundlegende Konzept der Gestenerkennung von den Rohdaten bis zur Klassifizierung der eigentlichen Handgeste besprochen.
 
-\section{Systementwurf}
-
+\section{Requirements}
+In this thesis we develop a system for 
 \subsection{Software}
-Grundsätzlich ist es möglich, mit Hilfe von maschinellem Lernen eine Klassifizierung von Handgesten direkt aus aufgezeichneten Tiefeninformationen durchzuführen. Hierfür kann wie in \cite{Molchanov2016} eine Kombination aus einem CNN und einem nachgeschalteten RNN genutzt werden. In dieser Variante \todo{bessere Formulierung} sind allerdings die Struktur des Netzes sowie Anzahl und Art der Klassen streng gekoppelt. Hinzufügen oder Entfernen, beziehungsweise Ändern einer Klasse erfordert somit in jedem Fall ein erneutes Training des Netzes.
-Ein weiteres Problem der genannten Vorgehensweise ist, dass für eine zuverlässige Klassifizierung eine ausreichende Menge an Trainingsdaten, bestehend aus Bildsequenzen und zugehörigen Klassenlabels zur Verfügung stehen muss. Soll das System allerdings im laufenden Betrieb mit neuen Klassen erweitert werden können, ist die Beschaffung dieser Daten nicht ohne weiteres möglich. Der Benutzer müsste in diesem Fall eine Geste zu häufig wiederholen.
+In principle, it is possible to classify hand gestures directly from recorded depth information using machine learning. As in \cite{Molchanov2016}, a combination of a CNN and a downstream RNN can be used for this purpose. In this variant \todo{better formulation}, however, the structure of the network and the number and type of classes are strictly coupled. Adding, removing or changing a class would force us to retrain large parts of the network.
+A further problem of this direct approach is that a sufficient amount of training data, consisting of image sequences and corresponding class labels, must be available for a reliable classification.
 
-Sollen neue Handgesten mit wenigen Beispieldaten, beziehungsweise im Idealfall nach einmaligem Vormachen erlernt werden, ist es sinnvoll, die Verarbeitung der Daten in zwei aufeinanderfolgenden Schritten vorzunehmen:
+If new hand gestures with few example data are to be learned, and/or in the ideal case after unique Vormachen, it makes sense to divide the data processing into two sequential steps:
 
-Zunächst wird aus den 2,5-dimensionalen Eingangsdaten (RGB-D) eine Handpose geschätzt. Diese kann je nach geforderter Genauigkeit in einem Vektor mit 21 oder mehr Elementen dargestellt werden und direkt (). Eine eventuelle Zeitabhängigkeit der jeweiligen Handgeste findet dabei noch keine Beachtung. 
-Im zweiten Schritt wird anschließend
+First, we generate a per-frame estimate of the current hand pose from the 2.5-dimensional input data (RGB-D). 
 
-Eine akkumulierte Anzahl aufeinanderfolgender Handposen kann anschließend in einem weiteren Netz, dem Gestenklassifikator einer zuvor aufgezeichneten Geste zugeordnet werden.
+
+A possible time dependence of the respective hand gesture is not yet taken into account. 
+
+
 
 
 \begin{figure}
@@ -23,3 +25,5 @@ Eine akkumulierte Anzahl aufeinanderfolgender Handposen kann anschließend in ei
 
 
 \subsection{Hardware}
+- Realsense
+- Testrack

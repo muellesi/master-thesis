@@ -37,29 +37,43 @@
 		
 		which maps a point $p_w = \left(x_w, y_w, z_w, 1\right)$ given in world coordinates to screen coordinates and disparity $d$, $p_s = \left(x_s, y_s, 1, d\right)$.
 		
-		
-	\subsection { Segmentierung }
-		
 
 	
 \section { Machine Learning }
+	
+	\subsection{Nearest Neighbors}
+	(k-)Nearest Neighbor (\markup{k-NN}\abbrev{k-NN}{k-Nearest Neighbors}) algorithms as described in \cite{Cover1967, Fix1952} are based on the assumption that samples which are close in a (appropriate) metric will belong to the same class. Hence they provide a simple decision rule for classification problems where no underlying distribution of the sample points is known. 
+	
+	Given a set of training vectors in a multidimensional feature space, each with their corresponding class label, the k-NN algorithm uses majority-voting among $k$ of the closest examples from the training data to determine the class of a new, unknown example.
+	
+	A common distance metric for k-NN is the euclidean distance but depending on the structure of the data to be classified, other distance metrics (like the Hamming Distance for texts) may be used.
+	
+	With growing size of the example pool, naive implementations of k-NN become too computationally intensive since for every sample the distance to every availabe training sample has to be calculated. This effect can be reduced by pre-partitioning the training data in such a way that parts of the training data can be ignored when classifying a new sample. One example for this kind of pre-partitioning is the \textit{Ball Tree} or \textit{Metric Tree} which 
+	
+	\subsection { Neural Networks }
+	Artificial neural networks 	are modeled on the biological function of human nerve tracts.	Early steps towards development and application of an artificial model of human neurons were made between 1943 and 1958 \cite{McCulloch1943, ROSENBLATT1958}. In 1958, Rosenblatt introduced the perceptron, a binary classifier mapping an input vector $\vec{x}$ to two classes, 1 and 0:
+	
+	\begin{equation}
+	\label{eq:rosenblatt-perceptron}ø
+	f(\vec{x}) =
+	\begin{cases}
+	1\text{, if } \vec{w}^{\,T}\vec{x} + b \geq 0 \\
+	0\text{, else.}
+	\end{cases}
+	\end{equation}
+	
+	Depending on the weights $\vec{w}$ and the bias $b$, the perceptron can either "`fire"' (produce 1 as output) or "`not fire"' (produce 0 as output) for a given input vector $\vec{x}$. This concept is inspired by biological neurons which only fire an action potential if the amount of incoming stimuli reaches a certain threshold.
+	
+	Due to its linear nature, this model is not able to reliably predict the outcome of real-world processes, which are mostly non-linear by nature. In 1962, Rosenblatt was able to overcome this limitation by stacking perceptrons into layers and chaining two or more layers to create a \markup{MLP}\nomenclature{MLP}{Multilayer Perceptron} \cite{ROSENBLATT1961}. 
 
-		
-	In recent years, there has been steady progress in the performance of computing hardware and thus in the area of machine learning.
-In this section the machine-learning techniques used in the work are briefly shown and explained.
-
-	\subsection { Neuronale Netze }
-	Artificial neural networks 	are modeled on the biological function of human nerve tracts.
-
-		\subsubsection { Das Perzeptron }
 		\begin{figure}
 					\input{Ressourcen/simple_perceptron}
 					\centering
 			\caption{Structure of a simple multi layer perceptron with one hidden layer.}
+			\label{fig:mlp}
 		\end{figure}
-		The perceptron is the simplest case of a neural network. It consists of at least two layers with any number of arithmetic units called neurons with the first and last layer playing a special role since they are connected to the "`outside"' and transfer data into and out of the network. The layers in between are called "`hidden layers"'.
-		
-		All neurons of one layer are fully connected to every neuron of the following layer via a weighted connection:
+
+		In an \markup{MLP}, all neurons of one layer are fully connected to every neuron of the following layer via a weighted connection as shown in Figure \ref{fig:mlp}.
 		
 		Each arithmetic unit in layer $j$ takes the data $o_{j-1} = o_i$ from the preceding neurons and calculates a preliminary output value $net_j$ by multiplying each input with the corresponding weights $w_{ij}$:
 		
@@ -70,7 +84,7 @@ In this section the machine-learning techniques used in the work are briefly sho
 			\text{net}_j = \sum_{i=1}^{n} w_{ij} \cdot o_i + b \, . 
 		\end{equation}
 		
-		The weights $w_{xy}$ and bias values $b_x$ are optimized in the training process to approximate the training data as close as possible and will not change after the training.
+		The weights $\matr{w}$ and bias values $\vec{b}$ are optimized in the training process to approximate the training data as close as possible and will not change after the training.
 		
 		
 		The inputs for the next layer are then calculated by filtering the preliminary results through a non-linear activation function,
@@ -83,15 +97,15 @@ In this section the machine-learning techniques used in the work are briefly sho
 
 		
 		 
-		\subsubsection { Aktivierungsfunktionen }
-		Since the basic arithmetic operations in a neural network are linear in nature, an additional nonlinearity must be introduced in order to learn nonlinear correlations. 
-For this purpose different activation functions $\varphi$ are used, some of which are explained in the following.\\
+		\subsubsection { Activation Functions }
+		Since the basic arithmetic operations in a neural network are linear in nature, an additional nonlinearity must be introduced in order to predict nonlinear correlations. 
+		For this purpose different transmission functions $\varphi$ are used, some of which are explained in the following.\\
 
 		
-		\textbf{Schwellenwertfunktion}
-		Die Schwellenwertfunktion ist die ursprüngliche Aktivierungsfunktion für das Perzeptron nach \cite{McCulloch1943} und besitzt lediglich $0$ und $1$ als mögliche Ausgangswerte. Sie ist mit dem Schwellenwert $\epsilon$ definiert zu 
+		\textbf{Threshold function}
+		The threshold function is the original activation function for the perceptron, inspired by the findings of \cite{McCulloch1943} and has only $0$ and $1$ as possible initial values. With the threshold $\epsilon$ it is defined as
 		\begin{equation}
-		\label{eq:acti_sw}
+		\label{eq:acti-sw}
 		o_j = \left\{
 		\begin{array}{ll}
 		1\text{, wenn } \text{net}_j > \epsilon \\
@@ -153,7 +167,7 @@ For this purpose different activation functions $\varphi$ are used, some of whic
 	
 	\subsection { Spezialfälle Neuronaler Netze}
 		\subsubsection { Convolutional Neural Networks (CNN) }
-		Convolutional neural networks (\abbrev{CNN}) are a special case of neural networks that are particularly suitable for processing higher-dimensional structures such as images or temporal sequences of data. 
+		Convolutional neural networks (\markup{CNN}\abbrev{CNN}{Convolutional Neural Network}) are a special case of neural networks that are particularly suitable for processing higher-dimensional structures such as images or temporal sequences of data. 
 
 		In a CNN, in addition to the "`dense"' or "`fully connected"' layers described above, additional layers are used that perform convolution operations on the data.
 
@@ -208,8 +222,11 @@ For this purpose different activation functions $\varphi$ are used, some of whic
 	
 	Hierfür kann ein Siamesisches Netzwerk (en.: siamese network) genutzt werden. 
 	
-\section { Anatomie der menschlichen Hand }
-	Die Bewegungsfreiheit der einzelnen Handglieder unterliegt anatomischen Beschränkungen, die in der Posenschätzung nützlich sein können, um die Güte der Schätzung zu beurteilen und mit einem passenden Modell entsprechend verfeinern zu können \cite{Melax5222017}.
+\section { Modeling the human hand }
+	\abbrev{PIP}{Proximal Interphalangeal, see Figure \ref{fig:malik2018handmodel}}
+	\abbrev{DIP}{Distal Interphalangeal, see Figure \ref{fig:malik2018handmodel}}
+	\abbrev{MCP}{Metacarpophalangeal, see Figure \ref{fig:malik2018handmodel}}
+	\abbrev{TIP}{Finger Tip}
 	
 	\begin{figure}
 		\centering
@@ -217,8 +234,29 @@ For this purpose different activation functions $\varphi$ are used, some of whic
 		\caption[Handmodell nach \cite{Malik2018b}]{In \cite{Malik2018b} wird ein Modell ähnlich dem oben stehenden (Quelle: \cite{Malik2018b}) genutzt, in dem die vollständige Handpose durch 21, bzw. 22 (Gelenk-) Koordinaten bestimmt ist.}
 		\label{fig:malik2018handmodel}
 	\end{figure}
+	Throughout this thesis, the hand model shown in Figure \ref{fig:malik2018handmodel} will be used as it provides enough key points to reconstruct hand poses to a sufficient degree.
 	
+	The freedom of movement of the individual joints of the hand is subject to anatomical restrictions. Modeling those restrictions can be useful to assess the quality of the estimate and to refine it accordingly. In \cite{Lin2000} the constraints are divided into two types: 
 	
+	Type 1 constraints describe the valid flexion and abduction/adduction angles
+	
+	\begin{alignat}{7}
+		&&0\degree \quad &&\leq \quad &&\theta_{MCP_F} \quad &&\leq \quad &90\degree\, &&,\\
+		&&0\degree \quad &&\leq \quad &&\theta_{PIP_F} \quad &&\leq \quad &110\degree\,&& ,\\
+		&&0\degree \quad &&\leq \quad &&\theta_{DIP_F} \quad &&\leq \quad &90\degree\, && \text{and}\\
+		&&-15\degree \quad &&\leq \quad &&\theta_{MCP_AA} \quad &&\leq \quad &15\degree\, &&,
+	\end{alignat}
+	
+	\begin{equation}
+	\theta_{MCP_AA} = 0\degree\, \text{and}
+	\end{equation}
+
+	\begin{equation}
+	\theta_{TM_AA} = 0\degree\,.
+	\end{equation}
+	
+	Type 2 constraints describe inter- and intra finger limits in motion:
+	A natural motion of the proximal interphalangeal (\markup{PIP}) will cause a proportional motion in the corresponding distal interphalangeal (\markup{DIP}).
 	\subsection{title}
 	
 	
@@ -226,4 +264,16 @@ For this purpose different activation functions $\varphi$ are used, some of whic
 \subsection{Intrinsische Parameter}
 Die intrinsischen Paramter einer Kamera sind definiert durch die Brennweite $f$, das Format des Bildsensors und 
 \subsection{Extrinsische Parameter}
+
+\section{YOLO}
+\markup{YOLO}\abbrev{YOLO}{You Only Look Once - Object detection Network} is a convolutional object detection network, described in \cite{Redmon2016}. Which uses an architecture similar to GoogLeNet \cite{Szegedy2014}. Instead of inception modules, as used in GoogLeNet, \cite{Redmon2016} uses building blocks with $1\times1$ reduction layers, followed by $3\times3$ convolutional layers. 
+
+\begin{figure}[ht]
+	\centering
+	\includegraphics[width=0.7\linewidth]{Ressourcen/yolo-net}
+	\caption[Architecture of the YOLO network.]{Architecture of the YOLO network. Source: \cite{Redmon2016}}
+	\label{fig:yolo-net}
+\end{figure}
+
+
 	

@@ -32,6 +32,7 @@
 %\usepackage{dirtree}
 \usepackage{acronym}
 
+
 %get bigger \par with one empty line
 \newcommand{\mypar}{\par\medskip}
 
@@ -43,10 +44,11 @@
 	\fi
 } 
 
-\newcommand{\matr}[1]{\mathbf{#1}} % undergraduate algebra version
-%\newcommand{\matr}[1]{#1}          % pure math version
+
+\newcommand{\matr}[1]{\mathbf{#1}}
+%\newcommand{\matr}[1]{#1}
 %\newcommand{\matr}[1]{\bm{#1}}     % ISO complying version
- 
+
 %\theoremstyle{plain}% default
 \theoremstyle{definition}
 \newtheorem{definition}{Definition}
@@ -57,10 +59,10 @@
 \let\abbrev\nomenclature
 \renewcommand{\nomname}{Abkürzungsverzeichnis}
 \setlength{\nomlabelwidth}{.25\hsize}
-\renewcommand{\nomlabel}[1]{#1 }%\dotfill}
+\renewcommand{\nomlabel}[1]{\hypertarget{nomencl-#1}{#1} }%\dotfill}
 \setlength{\nomitemsep}{-\parsep}
 \makenomenclature
-\newcommand{\markup}[1]{\underline{#1}} 
+\newcommand{\markup}[1]{\underline{\hyperlink{nomencl-#1}{#1}}}
 
 % Farben
 \usepackage{color}
@@ -101,6 +103,8 @@ EVITA
 % =====================================================
 \def\zB{z.\,B. }
 \def\uvm{u.\,v.\,m.}
+
+
 \begin{document}
 
 % =====================================================
@@ -165,21 +169,21 @@ EVITA
     
   	
     
-    \chapter{Grundlagen}
+    \chapter{Basics}
     \label{ch:Grundlagen}
 		\input{02_grundlagen/grundlagen.tex}
     \cleardoublepage
 
-	\chapter{Konzept}
+	\chapter{Concept}
 	\label{ch:Konzept}  	
 		\input{03_konzept/konzept.tex}
     \cleardoublepage    
     
-    \chapter{Implementierung}
+    \chapter{Implementation}
     \label{ch:implementierung}   
    		\input{04_implementierung/implementierung.tex}
    		
-    \chapter{Bewertung des Gesamtsystems}
+    \chapter{Evaluation}
 	\label{ch:Bewertung}  
 		\input{05_diskussion/diskussion.tex}
     \cleardoublepage    

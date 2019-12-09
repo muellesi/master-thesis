@@ -1,0 +1,14 @@
+\section{Hand pose estimation}
+For the task of estimating the user's hand pose, we implement two different hand pose regressors and compare their performance. 
+
+For both regressors, we use ImageNetV2 \cite{Sandler} as an encoder to transfer the given depth data into a latent feature space. 
+
+\subsection{Structural training}
+As described in the previous section, the hand pose module uses an encoder to convert the high-dimensional input data into a latent feature space. 
+Using the principle of transfer learning, we can train the encoder separately in order to improve the overall performance of the pose regression network. 
+
+For this we use an auto encoder-like structure as shown in Figure \ref{fig:autoencoder}.
+
+
+\section{Gesture Classification}
+\section{Physical Construction}

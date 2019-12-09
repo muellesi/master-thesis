@@ -45,7 +45,7 @@
 			\foreach \j in {1,...,2}
 			\draw [->] (hidden-\i) -- (output-\j);
 			
-			\foreach \l [count=\x from 0] in {Eingangs, Zwischen , Ausgangs}
-			\node [align=center, above] at (\x*2,2) {\l \\ schicht};
+			\foreach \l [count=\x from 0] in {Input, Hidden , Output}
+			\node [align=center, above] at (\x*2,2) {\l \\ layer};
 			
 			\end{tikzpicture}
