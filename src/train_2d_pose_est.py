@@ -75,9 +75,9 @@ def prepare_ds(name, ds, add_noise, add_empty, augment):
     return ds
 
 
-def batched_twod_argmax(input):
-    maxy = tf.argmax(tf.argmax(input, 2), 1)
-    maxx = tf.argmax(tf.argmax(input, 1), 1)
+def batched_twod_argmax(val):
+    maxy = tf.argmax(tf.argmax(val, 2), 1)
+    maxx = tf.argmax(tf.argmax(val, 1), 1)
     maxs = tf.stack([maxy, maxx], axis = 2)
     maxs = tf.cast(maxs, dtype = tf.dtypes.float32)
     return maxs
@@ -221,11 +221,10 @@ if __name__ == '__main__':
     ds_val = ds_provider.get_data("validation")
     ds_val = prepare_ds('validation',
                         ds_val,
-                        add_noise = True,
+                        add_noise = False,
                         add_empty = False,
                         augment = False)
-    ds_val = datasets.util.batch_shuffle_repeat_prefetch(ds_val,
-                                                  batch_size = batch_size)
+    ds_val = ds_val.repeat().batch(batch_size)
 
     ds_test = ds_provider.get_data("test")
     ds_test = prepare_ds('test',
@@ -233,8 +232,7 @@ if __name__ == '__main__':
                          add_noise = False,
                          add_empty = False,
                          augment = False)
-    ds_test = datasets.util.batch_shuffle_repeat_prefetch(ds_test,
-                                                  batch_size = batch_size)
+    ds_test = ds_test.batch(batch_size)
 
 
     # batch = ds_train.take(1)
