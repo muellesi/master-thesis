@@ -1,3 +1,5 @@
 /archive
 *.log
 /TikzEdtBeta0_2_3
+/thesis/*.ilg
+/thesis/*.nls

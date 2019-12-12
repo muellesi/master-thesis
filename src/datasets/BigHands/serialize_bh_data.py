@@ -40,11 +40,6 @@ def prepare_dataset(dataset_location, image_width, image_height):
                                                                   image_height))
     img_basepath = os.path.join(dataset_location, "images")
 
-    if os.path.exists(tfrecord_basepath):
-        shutil.rmtree(tfrecord_basepath)
-
-    os.makedirs(tfrecord_basepath)
-
     annot_content = pd.read_csv(annot_file_path, sep = "\t", header = None,
                                 usecols = list(range(0, 64)))
     file_names = np.array(annot_content.iloc[:, 0])
@@ -73,7 +68,25 @@ def prepare_dataset(dataset_location, image_width, image_height):
                            progressbar.ETA()])
         progbar.start(subset_ends[s_idx] - subset_starts[s_idx])
 
+        skip_chunk = False
+
         for idx in range(subset_starts[s_idx], subset_ends[s_idx]):
+
+            if idx % max_chunk_size == 0 or idx == subset_starts[s_idx]:
+                filename = "{}_{}.tfrecord".format(subset, chunk)
+                if not os.path.exists(os.path.join(tfrecord_basepath, filename)):
+                    record_writer = tf.io.TFRecordWriter(
+                            os.path.join(tfrecord_basepath, filename))
+                    skip_chunk = False
+                else:
+                    __logger.warn("File {} already exists. Skipping chunk {}.".format(filename, chunk))
+                    skip_chunk = True
+
+                chunk += 1
+
+            if skip_chunk:
+                continue
+
             img_path = os.path.join(img_basepath, file_names[idx])
             skel = skeleton_annots[idx]
 
@@ -104,18 +117,13 @@ def prepare_dataset(dataset_location, image_width, image_height):
             skel_maps = datasets.util.pts_to_confmaps(skel_2d,
                                                       image_width,
                                                       image_height,
-                                                      sigma = 15)
+                                                      sigma = 10)
             skel_maps = skel_maps * 2 ** 16
             skel_maps = skel_maps.astype(np.uint16)
             skel_maps_encoded = [
                     cv2.imencode(".png", m[:, :, np.newaxis])[1].tostring() for
                     m in skel_maps]
 
-            if idx % max_chunk_size == 0:
-                filename = "{}_{}.tfrecord".format(subset, chunk)
-                record_writer = tf.io.TFRecordWriter(
-                        os.path.join(tfrecord_basepath, filename))
-                chunk += 1
 
             tfrecord_str = tfrh.make_standard_pose_record(idx,
                                                           img,

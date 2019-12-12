@@ -6,24 +6,27 @@ import tensorflow as tf
 import datasets.util
 import tools
 from datasets import SerializedDataset
-from datasets.tfrecord_helper import depth_and_skel
+from datasets.tfrecord_helper import decode_confmaps
+from datasets.tfrecord_helper import depth_and_confmaps
 from models import models
 
 
 
-logger = tools.get_logger(__name__, do_file_logging = False)
+logger = tools.get_logger('train_2d_pose_est', do_file_logging = True)
 
 net_input_width = 224
 net_input_height = 224
 output_data_dir = "E:\\MasterDaten\\Results\\pose_est_2d"
-batch_size = 50
+batch_size = 17
 max_epochs = 50
+training_steps_per_epoch = 14000
+validation_steps = 2000
 learning_rate = 0.005
 tensorboard_dir = os.path.join(output_data_dir, 'tensorboard')
 checkpoint_dir = os.path.join(output_data_dir, 'checkpoints')
 final_save_name = os.path.join(output_data_dir, 'pose_est_final.hdf5')
 refined_save_name = os.path.join(output_data_dir, 'pose_est_refined.hdf5')
-checkpoint_prefix = 'cp_'
+checkpoint_prefix = 'cp_2d_pose_epoch'
 num_skel_joints = 21
 encoder_pretrained = "E:\\Google " \
                      "Drive\\UNI\\Master\\Thesis\\src\\data\\structural" \
@@ -32,42 +35,30 @@ encoder_pretrained = "E:\\Google " \
 empty_background_path = 'E:\\MasterDaten\\Datasets\\StructuralLearning' \
                         '\\augmentation\\**\\*.png'
 
+ds_cache_path = 'E:\\MasterDaten\\Cache\\2dpose\\'
 
-def prepare_ds(ds, add_noise, add_empty, cam_intr):
-    ds = ds.map(depth_and_skel,
+
+def prepare_ds(name, ds, add_noise, add_empty, augment):
+    ds = ds.map(depth_and_confmaps,
                 num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
-    ds = ds.map(lambda img, skel:
-                (img,
-                 tf.numpy_function(
-                         datasets.util.skel_to_confmaps,
-                         [skel,
-                          cam_intr,
-                          net_input_width,
-                          net_input_height,
-                          net_input_width / ds_provider.depth_width,
-                          net_input_height / ds_provider.depth_height,
-                          10],
-                         Tout = tf.float32)),
+    ds = ds.map(lambda img, confm: (img, decode_confmaps(confm)),
                 num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
-    ds = ds.map(lambda img, skel:
-                (img, tf.ensure_shape(skel, [224, 224, num_skel_joints])),
-                num_parallel_calls = tf.data.experimental.AUTOTUNE)
-
-    ds = ds.map(lambda img, skel:
-                (datasets.util.scale_image(img, [net_input_height,
-                                                 net_input_width]),
-                 skel), num_parallel_calls = tf.data.experimental.AUTOTUNE)
-
-    ds = ds.map(lambda img, skel:
+    ds = ds.map(lambda img, confm:
                 (datasets.util.scale_clip_image_data(img, 1.0 / 2500.0),
-                 skel), num_parallel_calls = tf.data.experimental.AUTOTUNE)
+                 datasets.util.scale_clip_image_data(confm, 1.0 / 2 ** 16)),
+                num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
     if add_noise:
-        ds = ds.map(lambda img, skel:
+        ds = ds.map(lambda img, confm:
                     (datasets.util.add_random_noise(img),
-                     skel), num_parallel_calls = tf.data.experimental.AUTOTUNE)
+                     confm),
+                    num_parallel_calls = tf.data.experimental.AUTOTUNE)
+
+    if augment:
+        ds = ds.map(datasets.util.augment_depth_and_confmaps,
+                    num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
     if add_empty:
         ds_empty_imgs = datasets.util.make_img_ds_from_glob(
@@ -77,9 +68,26 @@ def prepare_ds(ds, add_noise, add_empty, cam_intr):
                 value_scale = 1.0 / 2500.0,
                 shuffle = True)
         ds_empty_imgs = ds_empty_imgs.map(lambda img: (
-        img, tf.zeros([net_input_height, net_input_width, num_skel_joints])))
+                img, tf.zeros(
+                        [net_input_height, net_input_width, num_skel_joints])))
+        ds = ds.concatenate(ds_empty_imgs)
 
     return ds
+
+
+def batched_twod_argmax(input):
+    maxy = tf.argmax(tf.argmax(input, 2), 1)
+    maxx = tf.argmax(tf.argmax(input, 1), 1)
+    maxs = tf.stack([maxy, maxx], axis = 2)
+    maxs = tf.cast(maxs, dtype = tf.dtypes.float32)
+    return maxs
+
+
+def keypoint_error_metric(y_true, y_pred):
+    dist = batched_twod_argmax(y_true) - batched_twod_argmax(y_pred)
+    dist = tf.norm(dist, axis = 2)
+    mean_dists = tf.reduce_mean(dist, axis = 0)
+    return mean_dists
 
 
 def train_pose_estimator(train_data, validation_data, test_data,
@@ -93,13 +101,19 @@ def train_pose_estimator(train_data, validation_data, test_data,
                                        regressor_weights = None
                                        )
 
+    pose_estimator.build(input_shape = tf.TensorShape(
+            [batch_size, net_input_height, net_input_width, 1]))
+    pose_estimator.summary()
+
     if saved_model:
         pose_estimator.load_weights(saved_model)
 
     ###########################################################################
     ###########################  Main training    #############################
     ###########################################################################
-    pose_estimator.set_encoder_trainable(False)
+    logger.info('Disabling training for encoder')
+    pose_estimator.get_layer(index = 1).trainable = False
+    pose_estimator.summary()
 
     logger.info("Starting training...")
     models.train_model(
@@ -114,7 +128,11 @@ def train_pose_estimator(train_data, validation_data, test_data,
             save_best_cp_only = True,
             best_cp_metric = 'val_acc',
             cp_name = checkpoint_prefix,
-            loss = tf.keras.losses.mean_squared_error
+            loss = tf.keras.losses.mean_squared_error,
+            verbose = 1,
+            add_metrics = [keypoint_error_metric],
+            steps_per_epoch = training_steps_per_epoch,
+            validation_steps = validation_steps
             )
 
     logger.info("Preliminary Training done.")
@@ -140,14 +158,16 @@ def train_pose_estimator(train_data, validation_data, test_data,
     ###########################################################################
     #########################  Refinement training    #########################
     ###########################################################################
-    pose_estimator.set_encoder_trainable(True)
+    logger.info('Enabling training for encoder for fine tuning')
+    pose_estimator.get_layer(index = 1).trainable = True
+    pose_estimator.summary()
 
     logger.info("Starting refinement training for encoder...")
     models.train_model(
             model = pose_estimator,
             train_data = train_data,
             validation_data = validation_data,
-            max_epochs = 10,
+            max_epochs = max_epochs,
             learning_rate = learning_rate / 100,
             tensorboard_dir = tensorboard_dir,
             do_clean_tensorboard_dir = False,
@@ -155,7 +175,11 @@ def train_pose_estimator(train_data, validation_data, test_data,
             save_best_cp_only = True,
             best_cp_metric = 'val_acc',
             cp_name = checkpoint_prefix + "_refine_",
-            loss = tf.keras.losses.mean_squared_error
+            loss = tf.keras.losses.mean_squared_error,
+            verbose = 1,
+            add_metrics = [keypoint_error_metric],
+            steps_per_epoch = training_steps_per_epoch,
+            validation_steps = validation_steps
             )
 
     logger.info("Refinement Training done.")
@@ -176,46 +200,52 @@ def train_pose_estimator(train_data, validation_data, test_data,
             )
 
     test_result_labeled = dict(zip(pose_estimator.metrics_names, test_result))
-    print(test_result_labeled)
+    logger.info(test_result_labeled)
 
 
 if __name__ == '__main__':
     with open("datasets.json", "r") as f:
         ds_settings = json.load(f)
 
-    ds_provider = SerializedDataset(ds_settings["BigHands"])
+    ds_provider = SerializedDataset(ds_settings["BigHands224ConfMap"])
 
     ds_train = ds_provider.get_data("train")
-    ds_train = prepare_ds(ds_train,
+    ds_train = prepare_ds('train',
+                          ds_train,
                           add_noise = True,
                           add_empty = True,
-                          cam_intr = ds_provider.camera_intrinsics)
-    ds_train = datasets.util.batch_shuffle_prefetch(ds_train,
+                          augment = True)
+    ds_train = datasets.util.batch_shuffle_repeat_prefetch(ds_train,
                                                     batch_size = batch_size)
 
     ds_val = ds_provider.get_data("validation")
-    ds_val = prepare_ds(ds_val,
+    ds_val = prepare_ds('validation',
+                        ds_val,
                         add_noise = True,
                         add_empty = False,
-                        cam_intr = ds_provider.camera_intrinsics)
-    ds_val = datasets.util.batch_shuffle_prefetch(ds_val,
+                        augment = False)
+    ds_val = datasets.util.batch_shuffle_repeat_prefetch(ds_val,
                                                   batch_size = batch_size)
 
     ds_test = ds_provider.get_data("test")
-    ds_test = prepare_ds(ds_test,
+    ds_test = prepare_ds('test',
+                         ds_test,
                          add_noise = False,
                          add_empty = False,
-                         cam_intr = ds_provider.camera_intrinsics)
-    ds_val = datasets.util.batch_shuffle_prefetch(ds_val,
+                         augment = False)
+    ds_test = datasets.util.batch_shuffle_repeat_prefetch(ds_test,
                                                   batch_size = batch_size)
+
 
     # batch = ds_train.take(1)
     # data = batch.unbatch()
-    #
+    # import numpy as np
+    # import matplotlib.pyplot as plt
     # for inp, outp in data:
     #     fig = plt.figure(figsize = (20, 20))
     #     input = np.squeeze(inp)
     #     output = np.squeeze(outp)
+    #     output = output.transpose([2, 0, 1])
     #     ax = fig.add_subplot(421)
     #     ax.imshow(input)
     #     i = 8
@@ -223,10 +253,13 @@ if __name__ == '__main__':
     #     for pic in output:
     #         ax = fig.add_subplot(4, 7, i)
     #         ax.imshow(pic)
-    #         stacked = stacked + pic * 1000
+    #         stacked = stacked + pic * 100
     #         i = i + 1
     #     ax = fig.add_subplot(422)
     #     ax.imshow(stacked)
     #     fig.show()
 
-    train_pose_estimator(ds_train, ds_val, ds_test, saved_model = None)
+    train_pose_estimator(ds_train,
+                         ds_val,
+                         ds_test,
+                         saved_model = None)

@@ -31,7 +31,13 @@
 %\usepackage{listings} \lstset{basicstyle=\tiny\ttfamily, numbers=left, escapeinside={(*}{*)}, captionpos=b}
 %\usepackage{dirtree}
 \usepackage{acronym}
-
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{epigraph}
+\usepackage{csquotes}
+\usepackage{braket}
+\usepackage{etoolbox}
+\AtBeginEnvironment{quote}{\singlespacing\small}
 
 %get bigger \par with one empty line
 \newcommand{\mypar}{\par\medskip}
@@ -198,14 +204,18 @@ EVITA
 % ===================================================== 
 %\nocite{*}
 
+%====== DATASETS
+\nocite{Tompson2014, Yuan2017, Sun2015, Yuan2017b, GarciaHernando2017, Yuan2017c}
+
 %\addcontentsline{toc}{chapter}{Literaturverzeichnis, in ToC löschen}
 %\addcontentsline{toc}{chapter}{Literature}
 %\bibliographystyle{dinat}        % use a DIN style for the bibliography
-\bibliographystyle{plain}        % use a DIN style for the bibliography
+%\bibliographystyle{plain}        % use a DIN style for the bibliography
 %\bibliographystyle{abbrv}			%mit nummern in []
 %\bibliographystyle{plain}			%mit nummern in []
 %\bibliographystyle{alpha}			%3 Buchstaben + Jahr
 %\bibliographystyle{alphadin}
+\bibliographystyle{IEEEtran}
 
     % use external Bib-File, 
 		\bibliography{99_bib/standardbib}

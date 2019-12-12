@@ -15,6 +15,7 @@ def scale_image(img, new_shape):
 
 @tf.function
 def scale_clip_image_data(img, scale):
+    img = tf.cast(img, dtype = tf.float32)
     img = img * tf.constant(scale, dtype = tf.float32)
     img = tf.clip_by_value(img, clip_value_min = 0.0,
                            clip_value_max = 1.0)  # ignore stuff more than
@@ -31,6 +32,14 @@ def add_random_noise(img):
 
 def batch_shuffle_prefetch(ds, batch_size):
     ds = ds.shuffle(batch_size * 20)
+    ds = ds.batch(batch_size = batch_size)
+    ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
+    return ds
+
+
+def batch_shuffle_repeat_prefetch(ds, batch_size):
+    ds = ds.shuffle(batch_size * 20)
+    ds = ds.repeat()
     ds = ds.batch(batch_size = batch_size)
     ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
     return ds
@@ -104,3 +113,80 @@ def make_img_ds_from_glob(glob_pattern, width, height, value_scale = None,
                     num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
     return ds
+
+
+def np_augment_shift(pooled_images):
+    pooled_images = tf.keras.preprocessing.image.random_shift(pooled_images,
+                                                              wrg = 0.2,
+                                                              hrg = 0.2,
+                                                              row_axis = 0,
+                                                              col_axis = 1,
+                                                              channel_axis = 2,
+                                                              fill_mode =
+                                                              'nearest')
+    return pooled_images
+
+
+def np_augment_shear(pooled_images):
+    pooled_images = tf.keras.preprocessing.image.random_shear(pooled_images,
+                                                              intensity = 3,
+                                                              row_axis = 0,
+                                                              col_axis = 1,
+                                                              channel_axis = 2,
+                                                              fill_mode =
+                                                              'nearest')
+    return pooled_images
+
+
+def np_augment_rotate(pooled_images):
+    pooled_images = tf.keras.preprocessing.image.random_rotation(pooled_images,
+                                                                 rg = 45,
+                                                                 row_axis = 0,
+                                                                 col_axis = 1,
+                                                                 channel_axis = 2,
+                                                                 fill_mode =
+                                                                 'nearest')
+    return pooled_images
+
+
+def np_augment_zoom(pooled_images):
+    pooled_images = tf.keras.preprocessing.image.random_zoom(pooled_images,
+                                                             zoom_range = (
+                                                                     1.25,
+                                                                     1.25),
+                                                             row_axis = 0,
+                                                             col_axis = 1,
+                                                             channel_axis = 2,
+                                                             fill_mode =
+                                                             'nearest')
+    return pooled_images
+
+
+@tf.function
+def augment_depth_and_confmaps(depth, conf_maps, ):
+    num_conf_maps = tf.shape(conf_maps)[2]
+
+    pool = tf.concat([depth, conf_maps], axis = 2)
+
+    augmentations = {
+            np_augment_shift : 30,
+            np_augment_rotate: 30,
+            np_augment_shear : 10,
+            np_augment_zoom  : 10
+            }
+
+    rand = tf.random.uniform(shape = [], minval = 0, maxval = 100,
+                             dtype = tf.int32)
+    if rand < 10:
+        for augmentation, prob in augmentations.items():
+            rand = tf.random.uniform(shape = [], minval = 0, maxval = 100,
+                                     dtype = tf.int32)
+            if rand < prob:
+                transform_result = tf.numpy_function(augmentation, [pool],
+                                                     Tout = tf.dtypes.float32)
+                pool = tf.ensure_shape(transform_result, pool.shape)
+
+    result_depth, result_conf_maps = tf.split(pool,
+                                              [1, num_conf_maps], axis = 2)
+
+    return result_depth, result_conf_maps

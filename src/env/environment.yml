@@ -25,5 +25,6 @@ dependencies:
   - pip
   - lxml
   - tensorflow-probability
+  - tensorflow-addons
   - pip:
     - pyrealsense2

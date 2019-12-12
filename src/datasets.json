@@ -156,5 +156,42 @@
       "pdip",
       "ptip"
     ]
+  },
+  "BigHands224ConfMap": {
+    "name": "BigHands",
+    "location": "E:\\MasterDaten\\Datasets\\BigHands2.2m\\tfrecord_data-224_224",
+    "has_depth": true,
+    "depth_width": 224,
+    "depth_height": 224,
+    "depth_intrinsics": {
+      "pp_x": 110.58069925 ,
+      "pp_y": 114.46730337,
+      "f_x": 166.2730818,
+      "f_y": 221.69739993
+    },
+    "has_rgb": false,
+    "joint_names": [
+      "wrist",
+      "tmcp",
+      "imcp",
+      "mmcp",
+      "rmcp",
+      "pmcp",
+      "tpip",
+      "tdip",
+      "ttip",
+      "ipip",
+      "idip",
+      "itip",
+      "mpip",
+      "mdip",
+      "mtip",
+      "rpip",
+      "rdip",
+      "rtip",
+      "ppip",
+      "pdip",
+      "ptip"
+    ]
   }
 }
