@@ -30,10 +30,8 @@ class SerializedDataset:
 
 
     def get_data(self, subset):
-        filenames = np.array([os.path.abspath(os.path.join(self.data_root, f))
-                              for f in os.listdir(self.data_root) if f.startswith(subset)])
-        ds = tf.data.Dataset.from_tensor_slices(filenames).cache()
-        ds = ds.flat_map(open_tf_record)
+        ds = tf.data.Dataset.list_files(os.path.join(self.data_root, subset + "*.tfrecord"))
+        ds = ds.interleave(open_tf_record, cycle_length = 8, block_length = 1)
         ds = ds.map(decode_img, num_parallel_calls=tf.data.experimental.AUTOTUNE)
         return ds
 
