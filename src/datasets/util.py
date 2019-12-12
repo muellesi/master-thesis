@@ -166,7 +166,8 @@ def np_augment_zoom(pooled_images):
 def augment_depth_and_confmaps(depth, conf_maps, ):
     num_conf_maps = tf.shape(conf_maps)[2]
 
-    pool = tf.concat([depth, conf_maps], axis = 2)
+    pool = tf.concat([depth, conf_maps], axis = 2,
+                     name = 'ConcatBeforeAugment')
 
     augmentations = {
             np_augment_shift : 30,
@@ -177,16 +178,20 @@ def augment_depth_and_confmaps(depth, conf_maps, ):
 
     rand = tf.random.uniform(shape = [], minval = 0, maxval = 100,
                              dtype = tf.int32)
-    if rand < 10:
+    if rand <= 10:
         for augmentation, prob in augmentations.items():
             rand = tf.random.uniform(shape = [], minval = 0, maxval = 100,
                                      dtype = tf.int32)
-            if rand < prob:
+            if rand <= prob:
                 transform_result = tf.numpy_function(augmentation, [pool],
-                                                     Tout = tf.dtypes.float32)
-                pool = tf.ensure_shape(transform_result, pool.shape)
+                                                     Tout = tf.dtypes.float32,
+                                                     name =
+                                                     augmentation.__name__)
+                pool = tf.ensure_shape(transform_result, pool.shape,
+                                       name = 'EnsureShapeAfterAugment')
 
     result_depth, result_conf_maps = tf.split(pool,
-                                              [1, num_conf_maps], axis = 2)
+                                              [1, num_conf_maps], axis = 2,
+                                              name = 'SplitAfterAugment')
 
     return result_depth, result_conf_maps
