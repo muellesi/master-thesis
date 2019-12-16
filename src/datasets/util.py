@@ -37,11 +37,10 @@ def batch_shuffle_prefetch(ds, batch_size):
     return ds
 
 
-def batch_shuffle_repeat_prefetch(ds, batch_size):
+def shuffle_repeat_batch(ds, batch_size):
     ds = ds.shuffle(batch_size * 20)
     ds = ds.repeat()
     ds = ds.batch(batch_size = batch_size)
-    ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
     return ds
 
 

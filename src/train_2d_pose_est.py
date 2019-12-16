@@ -18,10 +18,10 @@ net_input_width = 224
 net_input_height = 224
 output_data_dir = "E:\\MasterDaten\\Results\\pose_est_2d"
 batch_size = 17
-max_epochs = 50
-training_steps_per_epoch = 14000
-validation_steps = 2000
-learning_rate = 0.005
+max_epochs = 100
+training_steps_per_epoch = 1000  # 5000
+validation_steps = 500  # 1000
+learning_rate = 0.0005
 tensorboard_dir = os.path.join(output_data_dir, 'tensorboard')
 checkpoint_dir = os.path.join(output_data_dir, 'checkpoints')
 final_save_name = os.path.join(output_data_dir, 'pose_est_final.hdf5')
@@ -76,8 +76,8 @@ def prepare_ds(name, ds, add_noise, add_empty, augment):
 
 
 def batched_twod_argmax(val):
-    maxy = tf.argmax(tf.argmax(val, 2), 1)
-    maxx = tf.argmax(tf.argmax(val, 1), 1)
+    maxy = tf.argmax(tf.reduce_max(val, axis=2), 1)
+    maxx = tf.argmax(tf.reduce_max(val, axis=1), 1)
     maxs = tf.stack([maxy, maxx], axis = 2)
     maxs = tf.cast(maxs, dtype = tf.dtypes.float32)
     return maxs
@@ -105,15 +105,15 @@ def train_pose_estimator(train_data, validation_data, test_data,
             [batch_size, net_input_height, net_input_width, 1]))
     pose_estimator.summary()
 
-    if saved_model:
-        pose_estimator.load_weights(saved_model)
-
     ###########################################################################
     ###########################  Main training    #############################
     ###########################################################################
     logger.info('Disabling training for encoder')
     pose_estimator.get_layer(index = 1).trainable = False
     pose_estimator.summary()
+
+    if saved_model:
+        pose_estimator.load_weights(saved_model)
 
     logger.info("Starting training...")
     models.train_model(
@@ -130,9 +130,7 @@ def train_pose_estimator(train_data, validation_data, test_data,
             cp_name = checkpoint_prefix,
             loss = tf.keras.losses.mean_squared_error,
             verbose = 1,
-            add_metrics = [keypoint_error_metric],
-            steps_per_epoch = training_steps_per_epoch,
-            validation_steps = validation_steps
+            add_metrics = [keypoint_error_metric]
             )
 
     logger.info("Preliminary Training done.")
@@ -215,7 +213,7 @@ if __name__ == '__main__':
                           add_noise = True,
                           add_empty = True,
                           augment = True)
-    ds_train = datasets.util.batch_shuffle_repeat_prefetch(ds_train,
+    ds_train = datasets.util.batch_shuffle_prefetch(ds_train,
                                                     batch_size = batch_size)
 
     ds_val = ds_provider.get_data("validation")
@@ -224,7 +222,7 @@ if __name__ == '__main__':
                         add_noise = False,
                         add_empty = False,
                         augment = False)
-    ds_val = ds_val.repeat().batch(batch_size)
+    ds_val = ds_val.batch(batch_size)
 
     ds_test = ds_provider.get_data("test")
     ds_test = prepare_ds('test',
@@ -233,7 +231,6 @@ if __name__ == '__main__':
                          add_empty = False,
                          augment = False)
     ds_test = ds_test.batch(batch_size)
-
 
     # batch = ds_train.take(1)
     # data = batch.unbatch()
@@ -260,4 +257,7 @@ if __name__ == '__main__':
     train_pose_estimator(ds_train,
                          ds_val,
                          ds_test,
-                         saved_model = None)
+                         saved_model =
+                         'E:\\Google '
+                         'Drive\\UNI\\Master\\Thesis\\src\\data\\pose_est'
+                         '\\2d\\wochenende_pretrained_encoder\\cp_2d_pose_epoch.24.hdf5')

@@ -69,7 +69,7 @@ def _make_2D_pose_head(num_output_channels = 21):
                                               kernel_initializer = "glorot_normal"
                                               ))
 
-    model.add(tf.keras.layers.Activation(tf.keras.activations.linear))
+    model.add(tf.keras.layers.Activation(tf.keras.activations.sigmoid))
 
     return model
 
@@ -158,7 +158,7 @@ def train_model(model,
 
     if use_early_stop:
         early_stop = tf.keras.callbacks.EarlyStopping(monitor              = 'val_loss',
-                                                      patience             = 5,
+                                                      patience             = 9,
                                                       verbose              = 1,
                                                       restore_best_weights = True)
         callbacks.append(early_stop)
