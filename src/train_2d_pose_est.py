@@ -9,7 +9,7 @@ from datasets import SerializedDataset
 from datasets.tfrecord_helper import decode_confmaps
 from datasets.tfrecord_helper import depth_and_confmaps
 from models import models
-
+import tools.training_callbacks
 
 
 logger = tools.get_logger('train_2d_pose_est', do_file_logging = True)
@@ -21,7 +21,7 @@ batch_size = 17
 max_epochs = 100
 training_steps_per_epoch = 1000  # 5000
 validation_steps = 500  # 1000
-learning_rate = 0.0005
+learning_rate = 0.05
 tensorboard_dir = os.path.join(output_data_dir, 'tensorboard')
 checkpoint_dir = os.path.join(output_data_dir, 'checkpoints')
 final_save_name = os.path.join(output_data_dir, 'pose_est_final.hdf5')
@@ -105,6 +105,12 @@ def train_pose_estimator(train_data, validation_data, test_data,
             [batch_size, net_input_height, net_input_width, 1]))
     pose_estimator.summary()
 
+    visu = tools.training_callbacks.ConfMapOutputVisualization(
+            log_dir = os.path.join(tensorboard_dir, 'plots', 'ConfMapOutputVisualization'),
+            feed_inputs_display = test_data,
+            plot_every_x_batches = 5000
+            )
+
     ###########################################################################
     ###########################  Main training    #############################
     ###########################################################################
@@ -114,6 +120,8 @@ def train_pose_estimator(train_data, validation_data, test_data,
 
     if saved_model:
         pose_estimator.load_weights(saved_model)
+
+    pose_estimator.get_layer(index = 1).trainable = True
 
     logger.info("Starting training...")
     models.train_model(
@@ -130,7 +138,8 @@ def train_pose_estimator(train_data, validation_data, test_data,
             cp_name = checkpoint_prefix,
             loss = tf.keras.losses.mean_squared_error,
             verbose = 1,
-            add_metrics = [keypoint_error_metric]
+            add_metrics = [keypoint_error_metric],
+            custom_callbacks = [visu]
             )
 
     logger.info("Preliminary Training done.")
@@ -176,8 +185,7 @@ def train_pose_estimator(train_data, validation_data, test_data,
             loss = tf.keras.losses.mean_squared_error,
             verbose = 1,
             add_metrics = [keypoint_error_metric],
-            steps_per_epoch = training_steps_per_epoch,
-            validation_steps = validation_steps
+            custom_callbacks = [visu]
             )
 
     logger.info("Refinement Training done.")

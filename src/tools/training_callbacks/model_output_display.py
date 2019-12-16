@@ -79,3 +79,52 @@ class AEOutputVisualization(tf.keras.callbacks.Callback):
 
             with self.writer.as_default():
                 tf.summary.image("!A Result plots", plots, step=self.seen, max_outputs=100)
+
+
+class ConfMapOutputVisualization(tf.keras.callbacks.Callback):
+
+    def __init__(self, log_dir, feed_inputs_display=None, plot_every_x_batches=1000):
+        super(ConfMapOutputVisualization, self).__init__()
+        self.feed_inputs_display = feed_inputs_display
+        self.writer = tf.summary.create_file_writer(log_dir)
+        self.plot_every_x_batches = plot_every_x_batches
+        self.seen = 0
+
+
+    def on_batch_end(self, batch, logs=None):
+        self.seen += 1
+        if self.seen % self.plot_every_x_batches == 0:
+            data = self.feed_inputs_display.take(1)
+            pred = self.model.predict(data)
+
+            data = data.unbatch()
+
+            min, max = pred.min(), pred.max()
+            print("min: {}, max: {}".format(min, max))
+
+            plots = []
+            j = 0
+            for inp, y_true in data:
+                y_pred = pred[j]
+                j = j+1
+                fig = plt.figure(figsize = (10, 10))
+                input = np.squeeze(inp)
+                output = np.squeeze(y_pred)
+                output = output.transpose([2, 0, 1])
+                ax = fig.add_subplot(421)
+                ax.set_title("Input")
+                ax.imshow(input)
+                i = 8
+                stacked = input
+                for pic in output:
+                    ax = fig.add_subplot(4, 7, i)
+                    ax.set_title("Joint {}".format(i-7))
+                    ax.imshow(pic)
+                    stacked = stacked + pic
+                    i = i + 1
+                ax = fig.add_subplot(422)
+                ax.imshow(stacked)
+                plots.append(plot_to_image(fig))
+
+            with self.writer.as_default():
+                tf.summary.image("!A Result plots", plots, step=self.seen, max_outputs=100)

@@ -113,7 +113,8 @@ def train_model(model,
                 verbose                  = 1,
                 add_metrics              = None,
                 steps_per_epoch          = None,
-                validation_steps         = None):
+                validation_steps         = None,
+                custom_callbacks         = None):
 
     if do_clean_tensorboard_dir:
         tools.clean_tensorboard_logs(tensorboard_dir)
@@ -162,6 +163,9 @@ def train_model(model,
                                                       verbose              = 1,
                                                       restore_best_weights = True)
         callbacks.append(early_stop)
+
+    if custom_callbacks is not None:
+        callbacks.extend(custom_callbacks)
 
     fit_params = {
             'x'              : train_data,

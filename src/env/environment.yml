@@ -27,3 +27,4 @@ dependencies:
   - tensorflow-probability
   - pip:
     - pyrealsense2
+    - pynput

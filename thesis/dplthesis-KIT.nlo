@@ -1,1 +1,11 @@
-\nomenclatureentry{aCNN@[{CNN}]\begingroup )\nomeqref {2.8}|nompageref}{7}
+\nomenclatureentry{aMLP@[{MLP}]\begingroup Multilayer Perceptron\nomeqref {2.5}|nompageref}{5}
+\nomenclatureentry{aReLU@[{ReLU}]\begingroup Rectifying linear unit\nomeqref {2.9}|nompageref}{6}
+\nomenclatureentry{aCNN@[{CNN}]\begingroup Convolutional Neural Network\nomeqref {2.12}|nompageref}{7}
+\nomenclatureentry{ak-NN@[{k-NN}]\begingroup k-Nearest Neighbors\nomeqref {2.12}|nompageref}{10}
+\nomenclatureentry{aPIP@[{PIP}]\begingroup Proximal Interphalangeal, see Figure \ref{fig:malik2018handmodel}\nomeqref {2.12}|nompageref}{10}
+\nomenclatureentry{aDIP@[{DIP}]\begingroup Distal Interphalangeal, see Figure \ref{fig:malik2018handmodel}\nomeqref {2.12}|nompageref}{10}
+\nomenclatureentry{aMCP@[{MCP}]\begingroup Metacarpophalangeal, see Figure \ref{fig:malik2018handmodel}\nomeqref {2.12}|nompageref}{10}
+\nomenclatureentry{aTIP@[{TIP}]\begingroup Finger Tip\nomeqref {2.12}|nompageref}{10}
+\nomenclatureentry{aYOLO@[{YOLO}]\begingroup You Only Look Once - Object detection Network\nomeqref {2.19}|nompageref}{12}
+\nomenclatureentry{aPOV@[{POV}]\begingroup Point Of View\nomeqref {3.0}|nompageref}{16}
+\nomenclatureentry{aMoCap@[{MoCap}]\begingroup Motion Capturing\nomeqref {3.0}|nompageref}{16}
