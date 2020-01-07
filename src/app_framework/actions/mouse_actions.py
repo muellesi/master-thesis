@@ -1,15 +1,21 @@
+from pynput.mouse import Button
+from pynput.mouse import Controller
+
 from .base_action import GestureAction
-from pynput.mouse import Button, Controller
+
+
 
 class MouseLeftClick(GestureAction):
 
     def __init__(self):
-        super.__init__(MouseLeftClick, self)
+        super().__init__()
         self.mouse = Controller()
+
 
     def call(self):
         self.mouse.click(Button.left, 1)
-    
+
+
     def get_name(self):
         return "MouseLeftClick"
 
@@ -17,13 +23,15 @@ class MouseLeftClick(GestureAction):
 class MouseRightClick(GestureAction):
 
     def __init__(self):
-        super.__init__(MouseRightClick, self)
+        super().__init__()
         self.mouse = Controller()
+
 
     def call(self):
         # perform mouse right click
         self.mouse.click(Button.right, 1)
-    
+
+
     def get_name(self):
         return "MouseRightClick"
 
@@ -31,11 +39,13 @@ class MouseRightClick(GestureAction):
 class MouseDoubleClick(GestureAction):
 
     def __init__(self):
-        super.__init__(MouseDoubleClick, self)
+        super().__init__()
         self.mouse = Controller()
+
 
     def call(self):
         self.mouse.click(Button.left, 2)
-    
+
+
     def get_name(self):
         return "MouseDoubleClick"

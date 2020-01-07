@@ -83,47 +83,57 @@ class AEOutputVisualization(tf.keras.callbacks.Callback):
 
 class ConfMapOutputVisualization(tf.keras.callbacks.Callback):
 
-    def __init__(self, log_dir, feed_inputs_display=None, plot_every_x_batches=1000):
+    def __init__(self, log_dir, feed_inputs_display=None, plot_every_x_batches=1000, confmap_labels=None):
         super(ConfMapOutputVisualization, self).__init__()
         self.feed_inputs_display = feed_inputs_display
         self.writer = tf.summary.create_file_writer(log_dir)
         self.plot_every_x_batches = plot_every_x_batches
         self.seen = 0
+        self.confmap_labels = confmap_labels
 
 
     def on_batch_end(self, batch, logs=None):
         self.seen += 1
         if self.seen % self.plot_every_x_batches == 0:
             data = self.feed_inputs_display.take(1)
-            pred = self.model.predict(data)
+            data_eager = next(iter(data))
 
-            data = data.unbatch()
+            pred = self.model.predict(data_eager[0])
 
             min, max = pred.min(), pred.max()
             print("min: {}, max: {}".format(min, max))
 
             plots = []
-            j = 0
-            for inp, y_true in data:
-                y_pred = pred[j]
-                j = j+1
+            for inp, y_true, y_pred in zip(data_eager[0], data_eager[1], pred):
                 fig = plt.figure(figsize = (10, 10))
                 input = np.squeeze(inp)
                 output = np.squeeze(y_pred)
                 output = output.transpose([2, 0, 1])
-                ax = fig.add_subplot(421)
+
+                ax = fig.add_subplot(431)
                 ax.set_title("Input")
                 ax.imshow(input)
+
+                ax = fig.add_subplot(432)
+                ax.set_title("y_true")
+                stacked = input + np.sum(y_true, axis = 2)
+                ax.imshow(stacked)
+
                 i = 8
                 stacked = input
                 for pic in output:
                     ax = fig.add_subplot(4, 7, i)
-                    ax.set_title("Joint {}".format(i-7))
+                    if self.confmap_labels is not None:
+                        ax.set_title(self.confmap_labels[i - 8])
+                    else:
+                        ax.set_title("Joint {}".format(i-7))
                     ax.imshow(pic)
                     stacked = stacked + pic
                     i = i + 1
-                ax = fig.add_subplot(422)
+                ax = fig.add_subplot(433)
+                ax.set_title("y_pred")
                 ax.imshow(stacked)
+
                 plots.append(plot_to_image(fig))
 
             with self.writer.as_default():

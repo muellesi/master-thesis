@@ -1,9 +1,15 @@
-In diesem Kapitel wird nachfolgend das grundlegende Konzept der Gestenerkennung von den Rohdaten bis zur Klassifizierung der eigentlichen Handgeste besprochen.
 
-\section{Requirements}
-In this thesis we develop a system for 
+\section{Hardware}
+The system created in this thesis will be integrated into an existing driver cell model, which is shown im Figure \ref{fig:itiv-driver-cell} and thus has to fit certain constraints.
 
-\subsection{Software}
+
+\subsection{Camera}
+
+- Realsense
+- Testrack
+
+
+\section{Software}
 In principle, it is possible to classify hand gestures directly from recorded depth information using machine learning. As in \cite{Molchanov2016}, a combination of a CNN and a downstream RNN can be used for this purpose. In this variant \todo{better formulation}, however, the structure of the network and the number and type of classes are strictly coupled. Adding, removing or changing a class would force us to retrain large parts of the network.
 A further problem of this direct approach is that a sufficient amount of training data, consisting of image sequences and corresponding class labels, must be available for a reliable classification.
 
@@ -14,7 +20,7 @@ First, we generate a per-frame estimate of the current hand pose from the 2.5-di
 
 A possible time dependence of the respective hand gesture is not yet taken into account. 
 
-\subsubsection{Input Format}
+\subsection{Input Format}
 The camera used in this thesis, the Intel Realsense D435 provides multiple types of image streams:
 
 \begin{itemize}
@@ -47,18 +53,9 @@ The only remaining input image type is the depth map. Although the used \markup{
 	\label{fig:software-net-structure-blackbox}
 \end{figure}
 
-
-\subsection{Hardware}
-The system created in this thesis will be integrated into an existing driver cell model, which is shown im Figure \ref{fig:itiv-driver-cell} and thus has to fit certain constraints.
-
-
-\subsubsection{Camera}
-
-- Realsense
-- Testrack
+\subsection{Training}
+	Aufgrund des zweistufigen Aufbaus kann auch das Training des Netzes in zwei Stufen erfolgen.
 
 
-\subsection{Software}
 
-	 \subsubsection{Training}
-Aufgrund des zweistufigen Aufbaus kann auch das Training des Netzes in zwei Stufen erfolgen.
+\section{Datasets and Data Generation}

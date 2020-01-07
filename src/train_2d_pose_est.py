@@ -5,11 +5,12 @@ import tensorflow as tf
 
 import datasets.util
 import tools
+import tools.training_callbacks
 from datasets import SerializedDataset
 from datasets.tfrecord_helper import decode_confmaps
 from datasets.tfrecord_helper import depth_and_confmaps
 from models import models
-import tools.training_callbacks
+
 
 
 logger = tools.get_logger('train_2d_pose_est', do_file_logging = True)
@@ -21,7 +22,7 @@ batch_size = 17
 max_epochs = 100
 training_steps_per_epoch = 1000  # 5000
 validation_steps = 500  # 1000
-learning_rate = 0.05
+learning_rate = 0.0005
 tensorboard_dir = os.path.join(output_data_dir, 'tensorboard')
 checkpoint_dir = os.path.join(output_data_dir, 'checkpoints')
 final_save_name = os.path.join(output_data_dir, 'pose_est_final.hdf5')
@@ -50,6 +51,15 @@ def prepare_ds(name, ds, add_noise, add_empty, augment):
                  datasets.util.scale_clip_image_data(confm, 1.0 / 2 ** 16)),
                 num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
+    ds = ds.map(lambda img, confm: (img,
+                                    confm *
+                                    (tf.math.divide_no_nan(
+                                            tf.constant(1.0,
+                                                        dtype =
+                                                        tf.dtypes.float32),
+                                            tf.reduce_max(confm)))),
+                num_parallel_calls = tf.data.experimental.AUTOTUNE)
+
     if add_noise:
         ds = ds.map(lambda img, confm:
                     (datasets.util.add_random_noise(img),
@@ -76,8 +86,8 @@ def prepare_ds(name, ds, add_noise, add_empty, augment):
 
 
 def batched_twod_argmax(val):
-    maxy = tf.argmax(tf.reduce_max(val, axis=2), 1)
-    maxx = tf.argmax(tf.reduce_max(val, axis=1), 1)
+    maxy = tf.argmax(tf.reduce_max(val, axis = 2), 1)
+    maxx = tf.argmax(tf.reduce_max(val, axis = 1), 1)
     maxs = tf.stack([maxy, maxx], axis = 2)
     maxs = tf.cast(maxs, dtype = tf.dtypes.float32)
     return maxs
@@ -90,8 +100,19 @@ def keypoint_error_metric(y_true, y_pred):
     return mean_dists
 
 
+def make_skewed_mse(asymmetry_factor):
+    def acost(y_true, y_pred):
+        return tf.pow(y_pred - y_true, 2) * tf.pow(
+                tf.sign(y_pred - y_true) + asymmetry_factor, 2)
+
+
+    return acost
+
+
 def train_pose_estimator(train_data, validation_data, test_data,
-                         saved_model = None):
+                         saved_model = None, skip_pretraining = False):
+    tools.clean_tensorboard_logs(tensorboard_dir)
+
     logger.info("Making model...")
     pose_estimator = models.make_model('2d-pose-est',
                                        input_shape = [net_input_height,
@@ -106,67 +127,84 @@ def train_pose_estimator(train_data, validation_data, test_data,
     pose_estimator.summary()
 
     visu = tools.training_callbacks.ConfMapOutputVisualization(
-            log_dir = os.path.join(tensorboard_dir, 'plots', 'ConfMapOutputVisualization'),
+            log_dir = os.path.join(tensorboard_dir, 'plots',
+                                   'ConfMapOutputVisualization'),
             feed_inputs_display = test_data,
-            plot_every_x_batches = 5000
+            plot_every_x_batches = 2000,
+            confmap_labels = ds_provider.joint_names
             )
 
-    ###########################################################################
-    ###########################  Main training    #############################
-    ###########################################################################
-    logger.info('Disabling training for encoder')
-    pose_estimator.get_layer(index = 1).trainable = False
-    pose_estimator.summary()
+    if not skip_pretraining:
+        #######################################################################
+        ##########################  Main training  ############################
+        #######################################################################
+        logger.info('Disabling training for encoder')
+        pose_estimator.get_layer(index = 1).trainable = False
+        pose_estimator.summary()
 
-    if saved_model:
-        pose_estimator.load_weights(saved_model)
+        if saved_model:
+            pose_estimator.load_weights(saved_model)
 
-    pose_estimator.get_layer(index = 1).trainable = True
+        logger.info("Starting training...")
+        models.train_model(
+                model = pose_estimator,
+                train_data = train_data,
+                validation_data = validation_data,
+                max_epochs = max_epochs,
+                learning_rate = learning_rate,
+                tensorboard_dir = tensorboard_dir,
+                checkpoint_dir = checkpoint_dir,
+                save_best_cp_only = True,
+                cp_name = checkpoint_prefix,
+                loss = make_skewed_mse(-0.5),
+                verbose = 1,
+                add_metrics = [keypoint_error_metric],
+                custom_callbacks = [visu],
+                lr_reduce_patience = 2,
+                early_stop_patience = 5
+                )
 
-    logger.info("Starting training...")
-    models.train_model(
-            model = pose_estimator,
-            train_data = train_data,
-            validation_data = validation_data,
-            max_epochs = max_epochs,
-            learning_rate = learning_rate,
-            tensorboard_dir = tensorboard_dir,
-            do_clean_tensorboard_dir = True,
-            checkpoint_dir = checkpoint_dir,
-            save_best_cp_only = True,
-            best_cp_metric = 'val_acc',
-            cp_name = checkpoint_prefix,
-            loss = tf.keras.losses.mean_squared_error,
-            verbose = 1,
-            add_metrics = [keypoint_error_metric],
-            custom_callbacks = [visu]
-            )
+        logger.info("Preliminary Training done.")
 
-    logger.info("Preliminary Training done.")
+        logger.info("Saving model as {}".format(final_save_name))
+        pose_estimator.save(
+                filepath = final_save_name,
+                overwrite = True,
+                include_optimizer = False,
+                save_format = 'h5'
+                )
 
-    logger.info("Saving model as {}".format(final_save_name))
-    pose_estimator.save(
-            filepath = final_save_name,
-            overwrite = True,
-            include_optimizer = False,
-            save_format = 'h5'
-            )
+        logger.info("Starting test...")
+        test_result = pose_estimator.evaluate(
+                x = test_data,
+                verbose = 1
+                )
 
-    logger.info("Starting test...")
-    test_result = pose_estimator.evaluate(
-            x = test_data,
-            batch_size = batch_size,
-            verbose = 1
-            )
-
-    test_result_labeled = dict(zip(pose_estimator.metrics_names, test_result))
-    print(test_result_labeled)
+        test_result_labeled = dict(
+                zip(pose_estimator.metrics_names, test_result))
+        print(test_result_labeled)
 
     ###########################################################################
     #########################  Refinement training    #########################
     ###########################################################################
     logger.info('Enabling training for encoder for fine tuning')
     pose_estimator.get_layer(index = 1).trainable = True
+
+    if saved_model and skip_pretraining:
+        # because of skip_pretraining we didn't already load the model in
+        # the pretraining step
+        try:
+            pose_estimator.load_weights(saved_model)
+        except:
+            logger.info(
+                "Was not able to load saved weights {} with unlocked "
+                "encoder. Locking it temporarily.".format(
+                    saved_model))
+            pose_estimator.get_layer(index = 1).trainable = False
+            pose_estimator.load_weights(saved_model)
+            logger.info("Weights loaded. Unlocking encoder!")
+            pose_estimator.get_layer(index = 1).trainable = True
+
     pose_estimator.summary()
 
     logger.info("Starting refinement training for encoder...")
@@ -177,10 +215,8 @@ def train_pose_estimator(train_data, validation_data, test_data,
             max_epochs = max_epochs,
             learning_rate = learning_rate / 100,
             tensorboard_dir = tensorboard_dir,
-            do_clean_tensorboard_dir = False,
             checkpoint_dir = checkpoint_dir,
             save_best_cp_only = True,
-            best_cp_metric = 'val_acc',
             cp_name = checkpoint_prefix + "_refine_",
             loss = tf.keras.losses.mean_squared_error,
             verbose = 1,
@@ -201,7 +237,6 @@ def train_pose_estimator(train_data, validation_data, test_data,
     logger.info("Starting test...")
     test_result = pose_estimator.evaluate(
             x = test_data,
-            batch_size = batch_size,
             verbose = 1
             )
 
@@ -245,7 +280,7 @@ if __name__ == '__main__':
     # import numpy as np
     # import matplotlib.pyplot as plt
     # for inp, outp in data:
-    #     fig = plt.figure(figsize = (20, 20))
+    #     fig = plt.figure()
     #     input = np.squeeze(inp)
     #     output = np.squeeze(outp)
     #     output = output.transpose([2, 0, 1])
@@ -256,16 +291,15 @@ if __name__ == '__main__':
     #     for pic in output:
     #         ax = fig.add_subplot(4, 7, i)
     #         ax.imshow(pic)
-    #         stacked = stacked + pic * 100
+    #         stacked = stacked + pic
     #         i = i + 1
     #     ax = fig.add_subplot(422)
     #     ax.imshow(stacked)
     #     fig.show()
+    # quit()
 
     train_pose_estimator(ds_train,
                          ds_val,
                          ds_test,
-                         saved_model =
-                         'E:\\Google '
-                         'Drive\\UNI\\Master\\Thesis\\src\\data\\pose_est'
-                         '\\2d\\wochenende_pretrained_encoder\\cp_2d_pose_epoch.24.hdf5')
+                         saved_model = 'E:\\MasterDaten\\Results\\pose_est_2d\\checkpoints\\cp_2d_pose_epoch_refine_.01.hdf5',
+                         skip_pretraining = True)

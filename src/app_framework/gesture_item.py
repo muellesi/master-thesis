@@ -1,7 +1,9 @@
 import dataclasses
-from actions.base_action import GestureAction
+from .actions.base_action import GestureAction
 
-@dataclass
+
+
+@dataclasses.dataclass
 class GestureItem:
     name: str
     samples: list

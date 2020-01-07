@@ -39,25 +39,19 @@ def _make_ae_head(input_shape = None):
 
 def _make_2D_pose_head(num_output_channels = 21):
     model = tf.keras.Sequential(name = '2d-pose')
-    model.add(tf.keras.layers.Conv2DTranspose(128, [3, 3],
-                                              strides            = 2,
-                                              padding            = 'same',
-                                              kernel_initializer = "glorot_normal",
-                                              activation         = 'relu'))
-
     model.add(tf.keras.layers.Conv2DTranspose(64, [3, 3],
                                               strides            = 2,
                                               padding            = 'same',
                                               kernel_initializer = "glorot_normal",
                                               activation         = 'relu'))
 
-    model.add(tf.keras.layers.Conv2DTranspose(32, [3, 3],
-                                              strides            = 2,
+    model.add(tf.keras.layers.Conv2DTranspose(64, [5, 5],
+                                              strides            = 4,
                                               padding            = 'same',
                                               kernel_initializer = "glorot_normal",
                                               activation         = 'relu'))
 
-    model.add(tf.keras.layers.Conv2DTranspose(32, [3, 3],
+    model.add(tf.keras.layers.Conv2DTranspose(32, [5, 5],
                                               strides            = 2,
                                               padding            = 'same',
                                               kernel_initializer = "glorot_normal",
@@ -105,19 +99,22 @@ def train_model(model,
                 do_clean_tensorboard_dir = True,
                 checkpoint_dir           = 'checkpoints',
                 save_best_cp_only        = False,
-                best_cp_metric           = 'val_acc',
+                best_cp_metric           = 'val_loss',
                 cp_name                  = 'cp_',
                 loss                     = tf.keras.losses.mean_squared_error,
                 use_lr_reduce            = True,
+                lr_reduce_factor         = 0.75,
+                lr_reduce_patience       = 3,
+                lr_reduce_min_lr         = 0.00000001,
+                lr_reduce_metric         = 'val_loss',
                 use_early_stop           = True,
+                early_stop_patience      = 10,
+                early_stop_metric        = 'val_loss',
                 verbose                  = 1,
                 add_metrics              = None,
                 steps_per_epoch          = None,
                 validation_steps         = None,
                 custom_callbacks         = None):
-
-    if do_clean_tensorboard_dir:
-        tools.clean_tensorboard_logs(tensorboard_dir)
 
     optimizer = tf.keras.optimizers.Adam(learning_rate = learning_rate,
                                          clipvalue = 10)
@@ -138,7 +135,9 @@ def train_model(model,
     checkpointer = tf.keras.callbacks.ModelCheckpoint(
             filepath = os.path.join(checkpoint_dir,
                                     cp_name + ".{epoch:02d}" + ".hdf5"),
-            save_best_only = False)
+            save_best_only = save_best_cp_only,
+            monitor = best_cp_metric
+            )
     callbacks.append(checkpointer)
 
     tensorboard = tf.keras.callbacks.TensorBoard(log_dir        = tensorboard_dir,
@@ -150,16 +149,16 @@ def train_model(model,
     callbacks.append(tensorboard)
 
     if use_lr_reduce:
-        lr_reduce = tf.keras.callbacks.ReduceLROnPlateau(monitor  = 'val_loss',
-                                                         factor   = 0.75,
-                                                         patience = 3,
+        lr_reduce = tf.keras.callbacks.ReduceLROnPlateau(monitor  = lr_reduce_metric,
+                                                         factor   = lr_reduce_factor,
+                                                         patience = lr_reduce_patience,
                                                          verbose  = 1,
-                                                         min_lr   = 0.00000001)
+                                                         min_lr   = lr_reduce_min_lr)
         callbacks.append(lr_reduce)
 
     if use_early_stop:
-        early_stop = tf.keras.callbacks.EarlyStopping(monitor              = 'val_loss',
-                                                      patience             = 9,
+        early_stop = tf.keras.callbacks.EarlyStopping(monitor              = early_stop_metric,
+                                                      patience             = early_stop_patience,
                                                       verbose              = 1,
                                                       restore_best_weights = True)
         callbacks.append(early_stop)
@@ -202,10 +201,10 @@ def make_pose_estimator_2d(input_shape,
 
     latent = encoder(inputs)
 
+    regressor = _make_2D_pose_head(num_output_channels = num_joints)
+
     if regressor_weights is not None:
-        regressor = tf.keras.models.load_model(regressor_weights)
-    else:
-        regressor = _make_2D_pose_head(num_output_channels = num_joints)
+        regressor = regressor.load_weights(regressor_weights)
 
     predictions = regressor(latent)
 

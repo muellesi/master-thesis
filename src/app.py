@@ -1,23 +1,13 @@
-import argparse
-import sys
-import cv2
 import os
-import matplotlib.pyplot as plt
-import matplotlib
-import dataclasses
+
 import numpy as np
 
-import json
-
-
-import models.models as models
-from models.knn_gesture_classifier import KNNClassifier
-
-
+import app_framework.actions
+import app_framework.gui.main_window
 import tools
-from datasets import SerializedDataset
-from app_framework.gui.main_window import MainWindow
-from app_framework.actions.action_manager import ActionManager
+from app_framework.gesture_save_file import deserialize_to_gesture_collection
+from app_framework.gesture_save_file import serialize_gesture_collection
+
 
 
 configuration = None
@@ -27,48 +17,56 @@ last_frame_depth = None
 last_frame_rgb = None
 
 
-def mouse_callback(x, y, img, event):
-    if event == cv2.EVENT_LBUTTONDOWN:
-        pass
-    elif event == cv2.EVENT_LBUTTONUP:
-        pass
-    elif event == cv2.EVENT_MOUSEMOVE:
-        logger.info(img[y][x])
-
-
-def overlay_skeleton(img, skel_cam_coord, skew_factor=None, intrinsics=None, joint_names=None):
-    skeleton_2d = tools.skeleton_renderer.project_2d(skel_cam_coord, intrinsics)
+def overlay_skeleton(img, skel_cam_coord, skew_factor = None,
+                     intrinsics = None, joint_names = None):
+    skeleton_2d = tools.skeleton_renderer.project_2d(skel_cam_coord,
+                                                     intrinsics)
     if skew_factor:
-        skeleton_2d = skeleton_2d.dot(np.array([[skew_factor[1], 0], [0, skew_factor[0]]]))
+        skeleton_2d = skeleton_2d.dot(
+                np.array([[skew_factor[1], 0], [0, skew_factor[0]]]))
     image2 = tools.image_colorizer.colorize_cv(img, 0.0, 1.0, 'viridis')
-    tools.render_skeleton(image2, skeleton_2d, joint_names=joint_names)
+    tools.render_skeleton(image2, skeleton_2d, joint_names = joint_names)
     return image2
 
 
-class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return json.JSONEncoder.default(self, obj)
+def record_sample():
+    print("recording sample...")
+    return np.zeros((90, 21, 2))
+
+
+
+
+def run_app(gesture_data):
+    raise NotImplementedError()
+
 
 def main(argv):
-    with open('gesture_data.json', 'r') as f:
-        gesture_data = json.load(f)
+    gesture_data = []
+    if os.path.exists('gesture_data.json'):
+        gesture_data = deserialize_to_gesture_collection('gesture_data.json')
 
     print(gesture_data)
 
-    action_manager = ActionManager()
-    
-    for i in range(20):
-        g = GestureItem(name='gesture {}'.format(i), samples = [], action = None)
-        gesture_data.append(GestureItem)
+    action_manager = app_framework.actions.ActionManager()
 
-    control_center = MainWindow()
+    for i in range(20):
+        g = app_framework.GestureItem(name = 'gesture {}'.format(i),
+                                      samples = [],
+                                      action =
+                                      app_framework.actions.HelloWorldAction().get_name())
+        gesture_data.append(g)
+
+    control_center = app_framework.gui.MainWindow(action_manager,
+                                                  sample_record_callback = record_sample,
+                                                  save_gestures_callback = lambda
+                                                      gestures: serialize_gesture_collection(gestures,
+                                                                                             'gesture_data.json'),
+                                                  main_app_callback = run_app)
+    control_center.set_gestures(gesture_data)
     while control_center.alive:
         control_center.update()
 
-    return 
-
+    return
 
 
 if __name__ == "__main__":

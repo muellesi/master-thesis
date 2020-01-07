@@ -28,3 +28,5 @@ dependencies:
   - pip:
     - pyrealsense2
     - pynput
+    - pyttsx3
+

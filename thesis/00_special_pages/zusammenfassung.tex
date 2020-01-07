@@ -1,35 +1,4 @@
-\todo{bislang nur automatisch übersetzt}
-With the increasing popularity of virtual assistants, alternative operating methods for user interfaces are increasingly being used in everyday life in the automotive sector as well. Many assistants of the current generation, however, only provide voice input.
-
-However, especially with regard to accessibility, it is desirable to provide other input options in addition to pure voice input. However, even for people without limitations of acoustic perception, speech input is not always the optimal input method. An example of this is the multimedia control in an automobile - here voice input may already be restricted by the music being played to such an extent that traditional input methods such as control panels or touchscreens must be used. 
-
-However, since inputs at the touch of a button or touch display can distract drivers from road traffic, additional input options that do not require the driver to turn away his eyes could additionally increase safety.
-
-One possible solution to these problems is gesture control, in which commands are assigned to specific hand gestures. Hand gestures can be static, but can also include complex motion sequences, which are usually pre-programmed. Due to very different usage patterns, a system in which gestures can be freely defined by the user would be advantageous. 
-
-Within the scope of this work, an innovative self-learning gesture control system for automobiles is to be developed, which makes it possible to program arbitrary hand gestures by demonstration. In a first step, the system can be pre-trained with the help of several recorded videos of different hand gestures, but the goal should be a one-shot learning, so that the user can define any gestures by showing them once.
-
-For this purpose, a two-part system consisting of a Convolutional Neural Network (CNN) and a classifier will be used. The purpose of the CNN will be to map a depth image of the hand gesture recorded by a 3D camera (Intel Realsense) to the virtual representation of a hand, thus decisively reducing the dimensionality of the input data. The pose (or sequence of poses) is then assigned to a user-defined function using a classifier. The later goal of one-shot learning must be taken into account, which excludes algorithms that require a lot of training data. Since moving gestures may also be possible, a classifier is also required that can take this into account and assign the chronological sequence of several poses to a single gesture.
-
-\section{Current state of research}
-Research in the field of computer vision, in particular object recognition and classification, has been a strong focus in recent years \cite{FeiFei}. Especially in the field of gesture recognition there are numerous studies that investigate different strategies for segmentation and interpretation of hand and whole body gestures \cite{Zimmermann2017,Sato2001,Supancic2018,Tompson2014,Zhang2016,OhnBar2014,Ge2019,Keskin2012,Li2013,Jones2002}. 
-
-
-For the segmentation two criteria usually represent a special challenge in the cited work:
-
-Firstly, for a successful extraction of the hands from an RGB image, relevant image areas must be separated from non-relevant areas. A simple approach about the skin color as in \cite{Sato2001} is not always sufficient even when viewing in different color spaces through different skin types and light situations, which is why \cite{Zhang2016} and \cite{Li2013} additionally use a combination of different techniques such as background subtraction, viewing the texture and grouping in superpixels. Often, however, as in \cite{Sridhar2013}, an optimized background with few or no skin tones is used.
-
-On the other hand, self occlusion during the subsequent gesture recognition is a problem that can make the recognition of certain poses more difficult. Here a fusion of depth information and RGB camera images can bring decisive advantages \cite{Keskin2012}.
-
-The subsequent classification of poses into gestures is not dealt with further in most works, since often only pose recognition is the goal.
 
 
 
 \cleardoublepage
-
-\chapter*{Urheberrecht}
-
-ARM\TReg, AMBA\TReg, AXI\TTra, Cortex\TTra, TrustZone\TTra, SecurCore\TTra  , DSTREAM\TTra und weitere im Text erwähnte ARM-Produkte sowie die entsprechenden Logos sind Marken oder eingetragene Marken der Advanced RISC Machines Ltd.\par
-\vspace{0.5cm}
-Xilinx\TReg, Zynq\TTra und weitere im Text erwähnte Xilinx-Produkte sowie die entsprechenden Logos sind Marken oder eingetragene Marken der Xilinx Inc.\par
-\vspace{0.5cm}

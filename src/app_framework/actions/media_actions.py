@@ -1,51 +1,66 @@
+from pynput.keyboard import Controller as kbd_ctrl
+from pynput.keyboard import Key
+
 from .base_action import GestureAction
-from pynput.keyboard import Key, Controller as kbd_ctrl
+
+
 
 class MediaVolumeMute(GestureAction):
 
     def __init__(self):
-        super.__init__(MediaVolumeMute, self)
+        super().__init__()
         self.keyboard = kbd_ctrl()
+
 
     def call(self):
         self.keyboard.press(Key.media_volume_mute)
-    
+
+
     def get_name(self):
         return "MediaVolumeMute"
+
 
 class MediaVolumeUp(GestureAction):
 
     def __init__(self):
-        super.__init__(MediaVolumeUp, self)
+        super().__init__()
         self.keyboard = kbd_ctrl()
+
 
     def call(self):
         self.keyboard.press(Key.media_volume_up)
-    
+
+
     def get_name(self):
         return "MediaVolumeUp"
+
 
 class MediaVolumeDown(GestureAction):
 
     def __init__(self):
-        super.__init__(MediaVolumeDown, self)
+        super().__init__()
         self.keyboard = kbd_ctrl()
+
 
     def call(self):
         self.keyboard.press(Key.media_volume_down)
-    
+
+
     def get_name(self):
         return "MediaVolumeDown"
+
 
 class MediaPlayPause(GestureAction):
 
     def __init__(self):
-        super.__init__(MediaPlayPause, self)
+        super().__init__()
         self.keyboard = kbd_ctrl()
+
 
     def call(self):
         self.keyboard.press(Key.media_play_pause)
-    
+
+
     def get_name(self):
         return "MediaPlayPause"
 
@@ -53,12 +68,14 @@ class MediaPlayPause(GestureAction):
 class MediaPlayNext(GestureAction):
 
     def __init__(self):
-        super.__init__(MediaPlayNext, self)
+        super().__init__()
         self.keyboard = kbd_ctrl()
+
 
     def call(self):
         self.keyboard.press(Key.media_next)
-    
+
+
     def get_name(self):
         return "MediaPlayNext"
 
@@ -66,11 +83,13 @@ class MediaPlayNext(GestureAction):
 class MediaPlayPrevious(GestureAction):
 
     def __init__(self):
-        super.__init__(MediaPlayPrevious, self)
+        super().__init__()
         self.keyboard = kbd_ctrl()
+
 
     def call(self):
         self.keyboard.press(Key.media_previous)
-    
+
+
     def get_name(self):
         return "MediaPlayPrevious"

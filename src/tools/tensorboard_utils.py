@@ -13,19 +13,20 @@ def clean_tensorboard_logs(tensorboard_dir):
     Moves files in subdirs "train", "validation" and "test" of tensorboard_dir to a new subdir "old_runs". Creates timestamped subdirs.
     :param tensorboard_dir: Root tensorboard log directory.
     """
-    __logger.info("Cleaning up tensorboard logdir {}".format(tensorboard_dir))
-
-    run_types = [os.curdir, "train", "validation", "test", "plots"]
-    for run_type in run_types:
-        type_dir = os.path.join(tensorboard_dir, run_type)
-        if os.path.exists(type_dir):
-            log_files = sorted([os.path.join(type_dir, file) for file in os.listdir(type_dir) if os.path.isfile(os.path.join(type_dir, file))],
-                               key=os.path.getmtime)
-            if len(log_files) > 0:
-                time = datetime.fromtimestamp(os.path.getmtime(log_files[0])).strftime('%Y-%m-%d_%H-%M-%S')
-                backupdir = os.path.abspath(os.path.join(tensorboard_dir, os.pardir))
-                backupdir = os.path.join(backupdir, "tensorboard_old_runs", run_type, time)
+    if os.path.exists(tensorboard_dir):
+        __logger.info("Cleaning up tensorboard logdir {}".format(tensorboard_dir))
+        log_files = sorted([os.path.join(tensorboard_dir, file) for file in os.listdir(tensorboard_dir)],
+                                   key=os.path.getmtime)
+        if len(log_files) > 0:
+            backupdir = os.path.abspath(os.path.join(tensorboard_dir, os.pardir))
+            backupdir = os.path.join(backupdir, "tensorboard_old_runs")
+            if not os.path.exists(backupdir):
                 os.makedirs(backupdir)
-                for file in log_files:
-                    shutil.move(file, backupdir)
-                    __logger.info("Moving log file {} to {}".format(file, backupdir))
+
+            time = datetime.fromtimestamp(os.path.getmtime(log_files[0])).strftime('%Y-%m-%d_%H-%M-%S')
+            backupdir = os.path.join(backupdir, time)
+
+            __logger.info("Moving old log files from {} to {}".format(tensorboard_dir, backupdir))
+            os.rename(tensorboard_dir, backupdir)
+
+    os.makedirs(tensorboard_dir)
