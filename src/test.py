@@ -64,6 +64,7 @@ if __name__ == '__main__':
             cv2.imshow(win_name_net, img2)
             cv2.waitKey(33)
     else:
+        do_filter = False
         cam = RealsenseCamera({
                 'file': 'E:\\Google Drive\\UNI\\Master\\Thesis\\src\\realsense_settings.json' })
         for i in range(999):
@@ -89,14 +90,23 @@ if __name__ == '__main__':
             prod_img = tools.colorize_cv(depth_raw.squeeze())
             if value_norm > 0.5:
                 import colorsys
-                for coord, value in zip(coords * np.array([480 / 224, 640 / 224]), values):
+
+                coords_scaled = coords * np.array([480 / 224, 640 / 224])
+                tools.render_skeleton(prod_img, np.stack([coords_scaled[:, 1], coords_scaled[:, 0]], axis = 1), True,
+                                      values)
+
+                for coord, value in zip(coords_scaled, values):
                     c = colorsys.hls_to_rgb(0.375*value, 0.5, 0.5)
                     color = (c[2], c[1], c[0])
                     prod_img = cv2.circle(prod_img, (int(coord[1]), int(coord[0])), 3, color)
 
             cv2.imshow(win_name_net, net_img)
             cv2.imshow(win_name_net_prod, prod_img)
-            cv2.waitKey(33)
+            key = cv2.waitKey(33)
+
+            if key == 102:
+                do_filter = not do_filter
+                print("do_filter: {}".format(do_filter))
         del cam
     cv2.destroyAllWindows()
     del model

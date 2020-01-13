@@ -1,14 +1,43 @@
-\section{Human Machine Interfaces}
-	\subsection{History of Human machine interfaces}
-Most machines require an input facility for human control. Especially with the increasing spread of personal computers (\markup{PC}\abbrev{PC}{Personal Computer}) intuitive and easy to use Human machine interfaces (\markup{HMI}\abbrev{HMI}{Human Machine Interface}) were required. For a long time, the keyboard was the only viable input option for PCs and other kinds of computers. With the introduction of graphical user interfaces (\markup{GUI}\abbrev{GUI}{Graphical User Interface}), the mouse became the second main input method for PCs. Both, keyboards and mouses have the advantage of being an intuitive way to control GUIs, enabling the user to make precise inputs while requiring negligible amounts of computational power. 
+ection{Human Machine Interfaces}
+Most machines require an input facility for human control. Human machine interfaces (\markup{HMI}\abbrev{HMI}{Human Machine Interface}) allow the user to control the behavior of a machine while possibly simultaneously providing feedback about the machine's reactions. An HMI can be implemented in terms of hardware or software and be either integral to the machine or provided by peripheral hardware. Information about the machines internal state can be provided via simple outputs like switch positions, lamps or simple displays but as well via complex interfaces like software terminals, graphical user interfaces (\markup{GUI} \abbrev{GUI}{Graphical User Interface}) or audio output.
+
+\subsection{History of Human machine interfaces}
+Early machines such as steam machines and mechanical were operated via levers and switches which simultaneously acted as information about the current state of the machine. With the introduction of electrical machines, electrical lamps and switches became a new possibility to interact with machines. 
+
+\begin{figure*}
+	\centering
+		\includegraphics{Ressourcen/z3_output.png}
+	\caption{Floating point output panel of the Z3 computer. Source: \cite{Jacko2003}}
+	\label{fig:z3_output}
+\end{figure*}
 
 
+With the invention of the first computer by Konrad Zuse 1941, new user input methods were required to allow the user to execute more than one task at once.
+Zuse's Z3 and many successors of the following years used punched tape for this purpose. Data and input commands were encoded on a long paper tape which was fed into the computer. The data was encoded in rows of five or more positions of which each encoded a single bit of data ("`Hole"' or "`No Hole"'). The computer then processed the whole tape at once and responded with the calculated result which was displayed via lamps, printers or teletypes (\markup{TTY}\abbrev{TTY}{Teletype}) \cite{Jacko2003}.
+
+Batch systems like the Z3 had the disadvantage of providing no direct feedback to the user's input. A program could run for multiple hours or days and only provide output after all commands were finished executing and while \markup{TTY}s already allowed to print results continuously, they were slow and provided no way for users to react to intermediate results. 
+
+Around 1970 the principle of the \markup{TTY} was combined with a keyboard and batch monitors, allowing the user to interact with and explore programs while they were running, thus speeding up the process of human machine interaction significantly.
+
+Graphical User Interfaces (\markup{GUI}\abbrev{GUI}{Graphical User Interface}) were first introduced in 1968, however they only became affordable and therefore more popular around 1985. With the first \markup{GUI}s, the principle of the mouse as a pointing instrument was introduced and became the second main input instrument for computers. 
+
+Both, keyboards and mouses have the advantage of being an intuitive way to control GUIs, enabling the user to make precise inputs while requiring negligible amounts of computational power. 
+
+A big disadvantage however is that both are hardly applicable while the user has to concentrate on other tasks like driving. Another major disadvantage is that both input devices need a hard surface to be used on. 
+
+This has lead to further developments in the area in the recent years. Beginning with the introduction of touch screens which became universally adopted with the first iPhone in 2007, many new input methods like voice recognition or gesture control were introduced. 
 
 
 
 	\subsection{Tactile HMI}
 
-\section { Computer Vision }
+	\subsection{State of the art}
+	
+	Although mouse and keyboard are older than 50 years at the point in time this thesis is written, they are still state of the art of input devices for dektop computers. Mobile devices however mainly rely on capacitive touch screens and voice control which became 
+		\todo{Samsung SelfieType}
+			
+			
+\section { Computer Vision for gesture control}
 	\subsection { The pinhole camera model }
 		Cameras project 3-dimensional scenes onto a 2-dimensional plane - the image plane.
 		The overall projection of a single point in space (given in a world copordinate system) to the image plane can be divided into two independent successive operations \cite[S.~50]{Szeliski2010}:
@@ -54,7 +83,7 @@ Most machines require an input facility for human control. Especially with the i
 			\begin{bmatrix}\matr{R} & T\\\matr{0}^T & 1\end{bmatrix} \,.
 			\end{equation}
 		
-\section { Neural Networks }
+\section { Neural Networks for computer vision }
 	Artificial neural networks 	are modeled on the biological function of human nerve tracts. Early steps towards development and application of an artificial model of human neurons were made between 1943 and 1958 \cite{McCulloch1943, ROSENBLATT1958}. In 1958, Rosenblatt introduced the perceptron, a binary classifier mapping an input vector $\vec{x}$ to two classes, 1 and 0:
 	
 	\begin{equation}

@@ -59,3 +59,14 @@ The only remaining input image type is the depth map. Although the used \markup{
 
 
 \section{Datasets and Data Generation}
+Training the pose estimation module requires a large amount of sample data to cover as many hand poses as possible. A valid data set for the given task consists of the following data:
+\begin{itemize}
+ \item A depth map, containing the subject's right hand in any pose. 
+ \item A set of at least 21 hand joint annotations, describing the 3d position of each joint. The resulting hand model is depicted in Figure \ref{fig:malik2018handmodel}.
+\end{itemize}
+
+The data sets published in \cite{Tompson2014, Yuan2017, Sun2015, Yuan2017b, GarciaHernando2017, Yuan2017c} provide the needed information together with additional labels for sequences of hand poses, describing the gesture/action depicted in each sequence. Since the aforementioned data sets provide their data in different formats, they have to be unified before they can be used for the training process. 
+
+Tensorflow provides the possibility to store training data in a serialized representation which increases load times for each data pair significantly. 
+
+\todo{Data load time comparison: tfrecord, tf with single files, python with single files}
