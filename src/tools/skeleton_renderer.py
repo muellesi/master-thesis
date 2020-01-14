@@ -42,10 +42,15 @@ def visualize_joints_2d(canvas, joints, joint_idxs=True, joint_names=None, links
 
     elif isinstance(canvas, np.ndarray):
         img = canvas
+        font = cv2.FONT_HERSHEY_PLAIN
 
-        for joint in joints:
+        for row_idx, joint in enumerate(joints):
             joint = joint.astype(np.int)
             img = cv2.circle(img, tuple(joint), 1, (255, 0, 0), 1)
+            if joint_idxs:
+                cv2.putText(img, str(joint_names[row_idx]) if joint_names is not None else str(row_idx), (joint[0], joint[1]), font, fontScale = 0.75, color = (0, 0, 0), thickness = 2)
+                cv2.putText(img, str(joint_names[row_idx]) if joint_names is not None else str(row_idx), (joint[0], joint[1]), font, fontScale = 0.75, color = (255, 255, 255))
+
         img = __draw2djoints_cv(img, joints, links, alpha=alpha)
         return img
 

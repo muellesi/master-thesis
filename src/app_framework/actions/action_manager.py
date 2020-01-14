@@ -1,4 +1,4 @@
-from .complex_actions import HelloWorldAction
+from .complex_actions import TTSAction
 from .keyboard_actions import KeyboardDownArrow
 from .keyboard_actions import KeyboardLeftArrow
 from .keyboard_actions import KeyboardRightArrow
@@ -13,7 +13,7 @@ from .mouse_actions import MouseDoubleClick
 from .mouse_actions import MouseLeftClick
 from .mouse_actions import MouseRightClick
 
-
+import threading
 
 class ActionManager:
 
@@ -32,7 +32,9 @@ class ActionManager:
                 MediaVolumeDown(),
                 MediaVolumeMute(),
                 MediaVolumeUp(),
-                HelloWorldAction()
+                TTSAction(),
+                TTSAction("Stop! It's hammer time!"),
+                TTSAction("Lorem ipsum dolor sit amet")
                 ]
 
         self._actions = { }
@@ -51,4 +53,5 @@ class ActionManager:
     def exec_action(self, action_name):
         act = self._actions.get(action_name)
         if act:
-            act.call()
+            th = threading.Thread(target = act.call)
+            th.start()

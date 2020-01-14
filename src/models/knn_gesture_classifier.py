@@ -1,35 +1,32 @@
+import copy
+from collections import deque
+
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
-from collections import deque
-import json
-import os
 
 
 
 class KNNClassifier():
 
-    def __init__(self, k, batch_size, sample_shape, save_dir="data/", save_name='knn.json'):
+    def __init__(self, k, batch_size, sample_shape):
         self.k = k
         self.batch_size = batch_size
-        self.save_dir = save_dir
-        self.save_name = save_name
 
         self.train_data = []
         self.train_data_labels = []
         self.class_names = []
 
-        if self.load_state():
-            self.__fit()
+        self.sample_shape = sample_shape
 
-        self.knn = KNeighborsClassifier(n_neighbors=3)
+        self.knn = KNeighborsClassifier(n_neighbors = 3)
 
-        self.current_data_frame = deque(maxlen=batch_size)
-        while len(self.current_data_frame) < batch_size:
-            self.current_data_frame.append(np.zeros(sample_shape))
+        self.current_data_frame = deque(maxlen = batch_size)
+        for i in range(self.batch_size):
+            self.current_data_frame.append(np.zeros(self.sample_shape))
 
 
     def push_sample(self, sample):
-        self.current_data_frame.append(list(sample).copy())
+        self.current_data_frame.appendleft(copy.copy(sample))
 
 
     def save_current_as_train_data(self, label):
@@ -44,51 +41,28 @@ class KNNClassifier():
             self.class_names.append(class_name)
 
 
+    def set_train_data(self, X, Y):
+        self.train_data = X
+        self.train_data_labels = Y
+        self.__fit()
+
+
     def predict(self):
-        return self.knn.predict(self.current_data_frame)
+        return self.knn.predict([np.stack(self.current_data_frame).reshape(-1)])
 
 
     def kneighors_graph(self):
-        return self.knn.kneighbors_graph(self.current_data_frame, mode='distance')
+        return self.knn.kneighbors_graph([np.stack(self.current_data_frame).reshape(-1)], mode = 'distance')
 
 
     def predict_proba(self):
-        return self.knn.predict_proba(self.current_data_frame)
+        return zip(self.train_data_labels, self.knn.predict_proba([np.stack(self.current_data_frame).reshape(-1)]))
 
 
     def __fit(self):
         self.knn.fit(self.train_data, self.train_data_labels)
 
 
-    def save_state(self):
-        save_dir = os.path.abspath(self.save_dir)
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-
-        save_data = {
-                "data": zip(self.train_data, self.train_data_labels),
-                "classes": self.class_names
-                }
-
-        save_file = os.path.join(self.save_dir, self.save_name)
-        with open(save_file, "w") as f:
-            json.dump(save_data, f)
-
-
-    def load_state(self, save_file=None):
-        save_file = os.path.join(self.save_dir, self.save_name) if save_file is None else save_file
-        if os.path.exists(save_file):
-            with open(save_file, "r") as f:
-                save_data = json.load(f)
-            if save_data:
-                self.class_names = save_data['classes']
-                train_data = save_data['data']
-                train_data = list(zip(*train_data))
-                self.train_data = train_data[0]
-                self.train_data_labels = train_data[1]
-                return True
-        return False
-
-
-    def __del__(self):
-        self.save_state()
+    def reset_queue(self):
+        for i in range(self.batch_size):
+            self.current_data_frame.append(np.zeros(self.sample_shape))

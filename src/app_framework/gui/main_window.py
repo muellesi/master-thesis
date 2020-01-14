@@ -8,7 +8,8 @@ from ..gesture_item import GestureItem
 
 class MainWindow():
 
-    def __init__(self, action_manager: ActionManager, sample_record_callback, main_app_callback, save_gestures_callback):
+    def __init__(self, action_manager: ActionManager, sample_record_callback, main_app_callback,
+                 save_gestures_callback):
         self.alive = True
 
         # Main Window
@@ -37,10 +38,16 @@ class MainWindow():
         Label(self._gesture_list_frame, text = "Gesture classes").grid(row = 0, columnspan = 2)
 
         self._gesture_list = Listbox(self._gesture_list_frame)
-        self._gesture_list.grid(row = 1, columnspan = 2)
+        self._gesture_list.grid(row = 1)
 
-        self._remove_gesture_button = Button(self._gesture_list_frame, text = "Remove")
-        self._remove_gesture_button.grid(row = 2, column = 1)
+        scrollbar = Scrollbar(self._gesture_list_frame, orient = "vertical")
+        scrollbar.config(command = self._gesture_list.yview)
+        scrollbar.grid(row = 1, column=1, sticky='ns')
+        self._gesture_list.config(yscrollcommand = scrollbar.set)
+
+        self._remove_gesture_button = Button(self._gesture_list_frame, text = "Remove",
+                                             command = lambda: self._remove_gesture())
+        self._remove_gesture_button.grid(row = 2, column = 0, columnspan = 2, sticky = 'ew')
 
         # Details
         details_frame = Frame(self._root_wnd)
@@ -72,6 +79,7 @@ class MainWindow():
         self._gesture_sample_list_frame = Frame(details_frame)
         self._gesture_sample_list_frame.grid(row = 1, column = 1)
 
+
         Label(details_frame,
               text = "Class samples").grid(row = 0, column = 1)
 
@@ -80,22 +88,27 @@ class MainWindow():
         self._gesture_sample_list = Listbox(self._gesture_sample_list_frame, exportselection = False)
         self._gesture_sample_list.grid(row = 1, columnspan = 2)
 
+        scrollbar = Scrollbar(self._gesture_sample_list_frame, orient = "vertical")
+        scrollbar.config(command = self._gesture_sample_list.yview)
+        scrollbar.grid(row = 1, column=2, sticky='ns')
+        self._gesture_sample_list.config(yscrollcommand = scrollbar.set)
+
         self._add_gesture_sample_button = Button(self._gesture_sample_list_frame, text = "Add...",
                                                  command = lambda: self._add_gesture_sample(
-                                                        self._gesture_list.curselection()[0]))
+                                                         self._gesture_list.curselection()[0]))
         self._add_gesture_sample_button.grid(row = 2, column = 0)
 
         self._remove_gesture_sample_button = Button(self._gesture_sample_list_frame, text = "Remove",
                                                     command = lambda: self._remove_gesture_sample())
         self._remove_gesture_sample_button.grid(row = 2, column = 1)
 
-        self._start_button = Button(self._root_wnd, text = "Start Application", command = lambda : self._main_app_callback(self._gestures))
+        self._start_button = Button(self._root_wnd, text = "Start Application",
+                                    command = lambda: self._main_app_callback(self._gestures))
         self._start_button.grid(row = 1, columnspan = 2)
 
         # INIT application state
         self._last_selected_gesture_index = self._gesture_list.curselection()
         self._last_selected_sample_index = self._gesture_sample_list.curselection()
-
 
 
     def _on_quit(self):
@@ -149,7 +162,7 @@ class MainWindow():
         if self._gesture_sample_list.size() > 0:
             self._gesture_sample_list.delete(0, END)
 
-        if gesture_index < len(self._gestures):
+        if 0 <= gesture_index < len(self._gestures):
             i = 1
             for sample in self._gestures[gesture_index].samples:
                 self._gesture_sample_list.insert(END, str(i))
@@ -171,12 +184,12 @@ class MainWindow():
         self._update_gesture_list()
         self._save_gestures_callback(self._gestures)
 
+
     def _onGestureSelectChanged(self):
-        if not self._gesture_list.size() > 0:
-            return
         selection = self._gesture_list.curselection()
         if len(selection) > 0:
             selection = selection[0]
+            print(self._gestures[selection])
             self._remove_gesture_button.config(state = 'enabled')
             self._name_variable.set(self._gestures[selection].name)
             self._action_variable.set(self._gestures[selection].action)
@@ -195,6 +208,7 @@ class MainWindow():
         selection = self._gesture_sample_list.curselection()
         if len(selection) > 0:
             selection = selection[0]
+            print(self._gestures[self._gesture_list.curselection()[0]].samples[selection])
             self._remove_gesture_sample_button.config(state = 'enabled')
         else:
             self._remove_gesture_sample_button.config(state = 'disabled')
@@ -216,3 +230,20 @@ class MainWindow():
         print(self._gestures[selected_gesture].samples)
         self._update_sample_list(selected_gesture)
         self._save_gestures_callback(self._gestures)
+
+
+    def _remove_gesture(self):
+        if self._gesture_list.size() > 0:
+            selected_gesture = self._gesture_list.curselection()[0]
+            print(self._gestures[selected_gesture].samples)
+            self._gestures.pop(selected_gesture)
+
+            self._update_gesture_list()
+
+            if self._gesture_list.size() == 0:
+                self._update_sample_list(-1)
+            else:
+                self._gesture_list.selection_set(0 if selected_gesture == 0 else selected_gesture - 1)
+                self._update_sample_list(selected_gesture - 1)
+
+            self._save_gestures_callback(self._gestures)
