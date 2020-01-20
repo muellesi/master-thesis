@@ -115,8 +115,8 @@ class RealsenseCamera:
 
         self.depth_intrinsics = rs.video_stream_profile(depth_frame.profile).get_intrinsics()
 
-        depth_image = np.asanyarray(depth_frame.get_data())
-        color_image = np.asanyarray(color_frame.get_data())
+        depth_image = np.asanyarray(depth_frame.download_data())
+        color_image = np.asanyarray(color_frame.download_data())
 
         return time.time(), depth_image, color_image
 
@@ -141,7 +141,7 @@ class RealsenseCamera:
                 continue
 
             # Convert images to numpy arrays
-            depth_image = np.asanyarray(depth_frame.get_data())
+            depth_image = np.asanyarray(depth_frame.download_data())
             depth_colormap = tools.colorize(depth_image, vmin=0, vmax=4000, cmap=cmap).numpy()
             cv2.imshow('autocycleStream', depth_colormap)
             if num_cycles >= 0:

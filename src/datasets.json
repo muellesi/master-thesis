@@ -44,9 +44,55 @@
       "ptip"
     ]
   },
+  "FHAD224ConfMap": {
+    "name": "FHAD",
+    "location": "E:\\MasterDaten\\Datasets\\FHAD\\tfrecord_data-224_224",
+    "gdrive_fid": "1dJvofYhXd6WBYcqx2v-M7LHrDok-iFWg",
+    "has_depth": true,
+    "depth_width": 224,
+    "depth_height": 224,
+    "depth_intrinsics": {
+      "pp_x": 110.58069925,
+      "pp_y": 114.46730337,
+      "f_x": 166.2730818,
+      "f_y": 221.69739993
+    },
+    "has_rgb": true,
+    "rgb_width": 1920,
+    "rgb_height": 1080,
+    "rgb_intrinsics": {
+      "pp_x": 1395.749023,
+      "pp_y": 1395.749268,
+      "f_x": 935.732544,
+      "f_y": 540.681030
+    },
+    "joint_names": [
+      "wrist",
+      "tmcp",
+      "imcp",
+      "mmcp",
+      "rmcp",
+      "pmcp",
+      "tpip",
+      "tdip",
+      "ttip",
+      "ipip",
+      "idip",
+      "itip",
+      "mpip",
+      "mdip",
+      "mtip",
+      "rpip",
+      "rdip",
+      "rtip",
+      "ppip",
+      "pdip",
+      "ptip"
+    ]
+  },
   "NYU": {
     "name": "NYU",
-    "location": "G:\\master_thesis_data\\Datasets\\nyu\\nyu_hand_dataset_v2\\dataset\\tfrecord_data",
+    "location": "G:\\master_thesis_data\\Datasets\\NYU\\nyu_hand_dataset_v2\\dataset\\tfrecord_data",
     "has_depth": true,
     "depth_width": 640,
     "depth_height": 480,
@@ -83,6 +129,44 @@
       "ptip"
     ]
   },
+  "NYU224ConfMap": {
+    "name": "NYU",
+    "location": "E:\\MasterDaten\\Datasets\\NYU\\nyu_hand_dataset_v2\\datasets\\tfrecord_data-224_224",
+    "gdrive_fid": "1dkpTs--bF-5OZsiFYuAs9e9HAOh4m3c1",
+    "has_depth": true,
+    "depth_width": 224,
+    "depth_height": 224,
+    "depth_intrinsics": {
+      "pp_x": 112,
+      "pp_y": 112,
+      "f_x": 205.81290275,
+      "f_y": 273.9683674
+    },
+    "has_rgb": false,
+    "joint_names": [
+      "wrist",
+      "tmcp",
+      "imcp",
+      "mmcp",
+      "rmcp",
+      "pmcp",
+      "tpip",
+      "tdip",
+      "ttip",
+      "ipip",
+      "idip",
+      "itip",
+      "mpip",
+      "mdip",
+      "mtip",
+      "rpip",
+      "rdip",
+      "rtip",
+      "ppip",
+      "pdip",
+      "ptip"
+    ]
+  },
   "MSRA": {
     "name": "MSRA",
     "location": "E:\\MasterDaten\\Datasets\\cvpr15_MSRAHandGestureDB\\tfrecord_data",
@@ -94,6 +178,44 @@
       "pp_y": 240,
       "f_x": 241.42,
       "f_y": 241.42
+    },
+    "has_rgb": false,
+    "joint_names": [
+      "wrist",
+      "tmcp",
+      "imcp",
+      "mmcp",
+      "rmcp",
+      "pmcp",
+      "tpip",
+      "tdip",
+      "ttip",
+      "ipip",
+      "idip",
+      "itip",
+      "mpip",
+      "mdip",
+      "mtip",
+      "rpip",
+      "rdip",
+      "rtip",
+      "ppip",
+      "pdip",
+      "ptip"
+    ]
+  },
+  "MSRA224ConfMap": {
+    "name": "MSRA",
+    "location": "E:\\MasterDaten\\Datasets\\cvpr15_MSRAHandGestureDB\\tfrecord_data-224_224",
+    "gdrive_fid": "1oN6zoyI0Z58FIN872enf2i_H9Bro4GFL",
+    "has_depth": true,
+    "depth_width": 224,
+    "depth_height": 224,
+    "depth_intrinsics": {
+      "pp_x": 112,
+      "pp_y": 112,
+      "f_x": 84.497,
+      "f_y": 112.662666667
     },
     "has_rgb": false,
     "joint_names": [
@@ -160,11 +282,12 @@
   "BigHands224ConfMap": {
     "name": "BigHands",
     "location": "E:\\MasterDaten\\Datasets\\BigHands2.2m\\tfrecord_data-224_224",
+    "gdrive_fid": "1MN_csyuZytI_XVZyzlNPPOLLUwHL6eRI",
     "has_depth": true,
     "depth_width": 224,
     "depth_height": 224,
     "depth_intrinsics": {
-      "pp_x": 110.58069925 ,
+      "pp_x": 110.58069925,
       "pp_y": 114.46730337,
       "f_x": 166.2730818,
       "f_y": 221.69739993

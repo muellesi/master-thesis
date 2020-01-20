@@ -26,6 +26,7 @@ last_frame_depth = None
 last_frame_rgb = None
 
 pose_model_path = 'E:\\Google Drive\\UNI\\Master\\Thesis\\src\\data\\pose_est\\2d\\ueber_weihnachten\\pose_est_refined.hdf5'
+camera_settings_file = 'E:\\Google Drive\\UNI\\Master\\Thesis\\src\\realsense_settings.json'
 gesture_sample_length = 90
 norm_limit = 0.5
 
@@ -63,7 +64,7 @@ def record_sample(model):
     countdown_font_thickness = 2
     print("recording sample...")
     cam = RealsenseCamera({
-            'file': 'E:\\Google Drive\\UNI\\Master\\Thesis\\src\\realsense_settings.json' })
+            'file': camera_settings_file })
 
     # Open Window
     win_name = "Sample record..."
@@ -125,13 +126,27 @@ def record_sample(model):
 
     return np.stack(sample_frames)
 
+
 def element_diff(samples):
-    return np.diff(samples, axis = 0, append = [samples[-1, :]])
+    if len(samples.shape) == 3:
+        return np.diff(samples, axis = 0, append = [samples[-1, :]])
+    elif len(samples.shape) == 2:
+        return np.diff(samples, axis = 1, append = [samples[-1, :]])
+    else:
+        raise NotImplementedError()
+
+def wrist_relative(samples):
+    if len(samples.shape) == 3:
+        return samples - samples[:, 0][:, np.newaxis, :]
+    elif len(samples.shape) == 2:
+        return samples - samples[0]
+    else:
+        raise NotImplementedError()
 
 
 def run_app(model, action_manager, gesture_data):
     cam = RealsenseCamera({
-            'file': 'E:\\Google Drive\\UNI\\Master\\Thesis\\src\\realsense_settings.json' })
+            'file': camera_settings_file })
     time, depth_raw, rgb = cam.get_frame()  # camera warm up
     coords, vals = cv_from_frame(depth_raw, model)
 
@@ -147,9 +162,14 @@ def run_app(model, action_manager, gesture_data):
 
     for idx, gesture in enumerate(gesture_data):
         for sample in gesture.samples:
-            #X.append(element_diff(sample).reshape(-1))
-            X.append(sample.reshape(-1))
+            # X.append(sample.reshape(-1))
+            # Y.append(idx + 1)
+
+            X.append(element_diff(sample).reshape(-1))
             Y.append(idx + 1)
+
+            # X.append(wrist_relative(sample).reshape(-1))
+            # Y.append(idx + 1)
 
     gesture_classifier.set_train_data(X, Y)
 
@@ -170,13 +190,18 @@ def run_app(model, action_manager, gesture_data):
         coords, vals = cv_from_frame(depth_raw, model)
         value_norm = np.linalg.norm(vals)
 
-        delta_coords = coords - last_coords
-        last_coords = coords
-
         if value_norm < norm_limit:
             coords = np.zeros(coords.shape)
 
-        gesture_classifier.push_sample(coords.reshape(-1))
+        delta_coords = coords - last_coords
+        last_coords = coords
+
+        wrist_normalized_coords = wrist_relative(coords)
+
+        # gesture_classifier.push_sample(coords.reshape(-1))
+        gesture_classifier.push_sample(delta_coords.reshape(-1))
+        # gesture_classifier.push_sample(wrist_normalized_coords.reshape(-1))
+
         gesture_prediction = gesture_classifier.predict()[0]
 
         if gesture_prediction > 0:
@@ -207,25 +232,31 @@ def run_app(model, action_manager, gesture_data):
             if value_norm > norm_limit:
                 coords_scaled = coords * np.array([480 / 224, 640 / 224])
                 tools.render_skeleton(result_img, np.stack([coords_scaled[:, 1], coords_scaled[:, 0]], axis = 1), True,
-                                  np.round(vals, 2))
+                                      np.round(vals, 2))
 
             # FPS counter
             fps = (1 / (end_time - start_time).microseconds) * 1e6
             fps_text = "{:.01f} fps".format(fps)
-            cv2.putText(result_img, fps_text, (10, 30), cv2.FONT_HERSHEY_PLAIN, fontScale = 0.75, color = (0, 0, 0), thickness = 2)
-            cv2.putText(result_img, fps_text, (10, 30), cv2.FONT_HERSHEY_PLAIN, fontScale = 0.75, color = (255, 255, 255), thickness = 1)
+            cv2.putText(result_img, fps_text, (10, 30), cv2.FONT_HERSHEY_PLAIN, fontScale = 0.75, color = (0, 0, 0),
+                        thickness = 2)
+            cv2.putText(result_img, fps_text, (10, 30), cv2.FONT_HERSHEY_PLAIN, fontScale = 0.75,
+                        color = (255, 255, 255), thickness = 1)
 
             # Current Gesture Class
             last_name = "None" if last_gesture is None else last_gesture.name
             current_name = "None" if gesture_prediction == 0 else gesture.name
             gesture_text = "Last: {} ; Current: {}".format(last_name, current_name)
-            cv2.putText(result_img, gesture_text, (320, 30), cv2.FONT_HERSHEY_PLAIN, fontScale = 0.75, color = (0, 0, 0), thickness = 2)
-            cv2.putText(result_img, gesture_text, (320, 30), cv2.FONT_HERSHEY_PLAIN, fontScale = 0.75, color = (255, 255, 255), thickness = 1)
+            cv2.putText(result_img, gesture_text, (320, 30), cv2.FONT_HERSHEY_PLAIN, fontScale = 0.75,
+                        color = (0, 0, 0), thickness = 2)
+            cv2.putText(result_img, gesture_text, (320, 30), cv2.FONT_HERSHEY_PLAIN, fontScale = 0.75,
+                        color = (255, 255, 255), thickness = 1)
 
             # Current Gesture Probabilities
             class_probabilities = dict(gesture_classifier.predict_proba())
-            cv2.putText(result_img, str(class_probabilities), (320, 60), cv2.FONT_HERSHEY_PLAIN, fontScale = 0.75, color = (0, 0, 0), thickness = 2)
-            cv2.putText(result_img, str(class_probabilities), (320, 60), cv2.FONT_HERSHEY_PLAIN, fontScale = 0.75, color = (255, 255, 255), thickness = 1)
+            cv2.putText(result_img, str(class_probabilities), (320, 60), cv2.FONT_HERSHEY_PLAIN, fontScale = 0.75,
+                        color = (0, 0, 0), thickness = 2)
+            cv2.putText(result_img, str(class_probabilities), (320, 60), cv2.FONT_HERSHEY_PLAIN, fontScale = 0.75,
+                        color = (255, 255, 255), thickness = 1)
 
         else:
             result_img = np.zeros((480, 640))

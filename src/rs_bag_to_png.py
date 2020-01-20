@@ -85,13 +85,13 @@ try:
         depth_color_frame = colorizer.colorize(depth_frame)
 
         # Convert depth_frame to numpy array to render image in opencv
-        depth_color_image = np.asanyarray(depth_color_frame.get_data())
+        depth_color_image = np.asanyarray(depth_color_frame.download_data())
 
         # Render image in opencv window
         cv2.imshow("Depth Stream", depth_color_image)
 
         print("Saving frame #{:07d} as {}".format(frame_id, os.path.join(savepath, "depth_{:07d}.png".format(frame_id))))
-        img = np.asanyarray(depth_frame.get_data()).astype(np.uint16)
+        img = np.asanyarray(depth_frame.download_data()).astype(np.uint16)
         cv2.imwrite(os.path.join(savepath, "depth_{:07d}.png".format(frame_id)), img)
 
         key = cv2.waitKey(1)

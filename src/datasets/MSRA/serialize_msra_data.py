@@ -9,8 +9,11 @@ import tools
 import datasets.tfrecord_helper as tfrh
 import pathlib
 import struct
+import datasets.util
 
-
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 __logger = tools.get_logger(__name__, do_file_logging=False)
 
@@ -40,9 +43,10 @@ def load_and_reencode(binfile):
     return encoded.tobytes()
 
 
-def prepare_dataset(dataset_location):
-    tfrecord_basepath = os.path.join(dataset_location, "tfrecord_data")
-
+def prepare_dataset(dataset_location, image_width, image_height):
+    tfrecord_basepath = os.path.join(dataset_location,
+                                     "tfrecord_data-{}_{}".format(image_width,
+                                                                  image_height))
     train_subjects = ["P0", "P2", "P3", "P4", "P5", "P6"]
     validate_subjects = ["P1"]
 
@@ -104,6 +108,15 @@ def prepare_dataset(dataset_location):
                 img_path = os.path.join(current_directory, img_filename)
 
                 img = load_and_reencode(img_path)
+                if 480 != image_height or 640 != image_width:
+                    img_decoded = tf.image.decode_png(img, channels = 1,
+                                                      dtype = tf.dtypes.uint16)
+                    img_decoded = tf.image.resize(img_decoded,
+                                                  [image_height, image_width])
+                    img_decoded = tf.cast(img_decoded,
+                                          dtype = tf.dtypes.uint16)
+                    img_encoded = tf.image.encode_png(img_decoded)
+                    img = img_encoded
 
                 if sample_idx % max_chunk_size == 0:
                     # write data to chunk file
@@ -111,7 +124,35 @@ def prepare_dataset(dataset_location):
                     record_writer = tf.io.TFRecordWriter(os.path.join(tfrecord_basepath, filename))
                     chunk_idx += 1
 
-                tfrecord_str = tfrh.make_standard_pose_record(sample_idx, img, 640, 480, skeleton)
+                cam_intr = np.array([
+                        [241.42, 0.0, 320],
+                        [0.0, 241.42, 240],
+                        [0.0, 0.0, 1.0]
+                        ])
+
+                skel_2d = tools.project_2d(skeleton.reshape(21, 3), cam_intr)
+
+                if 480 != image_height or 640 != image_width:
+                    skel_2d = skel_2d.dot(np.array([[image_width / 640.0, 0.0],
+                                                    [0.0, image_height / 480.0]]))
+
+                skel_maps = datasets.util.pts_to_confmaps(skel_2d,
+                                                          image_width,
+                                                          image_height,
+                                                          sigma = 10)
+                skel_maps = skel_maps * 2 ** 16
+                skel_maps = skel_maps.astype(np.uint16)
+                skel_maps_encoded = [
+                        cv2.imencode(".png", m[:, :, np.newaxis])[1].tostring() for
+                        m in skel_maps]
+
+                tfrecord_str = tfrh.make_standard_pose_record(sample_idx,
+                                                              img,
+                                                              image_width,
+                                                              image_height,
+                                                              skeleton,
+                                                              skel_maps_encoded)
+
                 record_writer.write(tfrecord_str)
                 sample_idx += 1
 
@@ -138,6 +179,19 @@ if __name__ == "__main__":
             required=True,
             help='Root path for the dataset'
             )
+    parser.add_argument(
+            '--image_width',
+            type = str,
+            default = 224,
+            help = 'Width of input images and skeleton maps'
+            )
+    parser.add_argument(
+            '--image_height',
+            type = str,
+            default = 224,
+            help = 'Height of input images and skeleton maps'
+            )
     args = parser.parse_args()
 
-    prepare_dataset(args.root)
+    prepare_dataset(args.root, args.image_width, args.image_height)
+

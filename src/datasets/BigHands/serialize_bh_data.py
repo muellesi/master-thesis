@@ -24,7 +24,9 @@ import datasets.tfrecord_helper as tfrh
 import datasets.util
 import tools
 
-
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 __logger = tools.get_logger(__name__, do_file_logging = False)
 

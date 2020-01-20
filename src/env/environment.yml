@@ -29,4 +29,5 @@ dependencies:
     - pyrealsense2
     - pynput
     - pyttsx3
-
+    - python-telegram-bot
+    - googledrivedownloader

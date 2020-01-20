@@ -2,16 +2,29 @@ import numpy as np
 import os
 import tensorflow as tf
 from .tfrecord_helper import open_tf_record, decode_img
-
-
+from .data_downloader import download_data
+from google_drive_downloader import GoogleDriveDownloader as gdd
 
 class SerializedDataset:
 
-    def __init__(self, config):
+    def __init__(self, config, cache_path = "C:\\temp"):
         self.name = config["name"]
-
         self.data_root = config["location"]
-        assert (os.path.exists(self.data_root))
+
+        if not os.path.exists(self.data_root):
+            if config.get("gdrive_fid") is not None:
+                dataset_id = "{}_w{}_h{}".format(self.name, config["depth_width"], config["depth_height"])
+                filename = dataset_id + ".zip"
+                target_path = os.path.join(cache_path, dataset_id)
+                self.data_root = os.path.join(target_path, os.path.basename(self.data_root))
+                if not os.path.exists(self.data_root):
+                    gdd.download_file_from_google_drive(file_id = config["gdrive_fid"],
+                                                        overwrite = True,
+                                                        dest_path = os.path.join(target_path, filename),
+                                                        showsize = True,
+                                                        unzip = True)
+            else:
+                assert False, "Dataset location has to exist on the system or gdrive_fid has to be set!"
 
         self.int_pp_x = config["depth_intrinsics"]["pp_x"]
         self.int_pp_y = config["depth_intrinsics"]["pp_y"]

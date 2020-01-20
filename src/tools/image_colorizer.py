@@ -5,7 +5,7 @@ import tensorflow as tf
 
 
 
-def colorize_tf(value, vmin=None, vmax=None, cmap=None):
+def colorize_tf(value, vmin = None, vmax = None, cmap = None):
     """
     Source: https://gist.github.com/jimfleming/c1adfdb0f526465c99409cc143dea97b
 
@@ -49,15 +49,14 @@ def colorize_tf(value, vmin=None, vmax=None, cmap=None):
 
     # gather
     cm = matplotlib.cm.get_cmap(cmap if cmap is not None else 'viridis')
-    colors = tf.constant([cm(i) for i in range(256)], dtype=tf.float32)
+    colors = tf.constant([cm(i) for i in range(256)], dtype = tf.float32)
     value = tf.gather(colors, indices)
 
     return value
 
 
-def colorize_cv(img, vmin=None, vmax=None, cmap=None):
+def colorize_cv(img, vmin = None, vmax = None, cmap = None):
     import numpy as np
-    import cv2
 
     vmin = img.min() if vmin is None else vmin
     vmax = img.max() if vmax is None else vmax
@@ -65,6 +64,8 @@ def colorize_cv(img, vmin=None, vmax=None, cmap=None):
     img = np.squeeze(img)
 
     indices = np.round(img * 255).astype(np.int32)
-    cm = matplotlib.cm.get_cmap(cmap if cmap is not None else 'viridis', lut=256)
+    cm = matplotlib.cm.get_cmap(cmap if cmap is not None else 'viridis', lut = 256)
     ret = cm(indices)
-    return ret
+    if ret.shape[2] == 4: # image somehow got an extra alpha channel
+        ret = ret[:, :, :3] # remove alpha channel since it is not needed and might cause problems
+    return np.ascontiguousarray(ret*255, dtype=np.uint8)

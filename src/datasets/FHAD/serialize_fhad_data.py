@@ -5,29 +5,36 @@
     Proceedings of Computer Vision and Pattern Recognition ({CVPR}), 2018
 """
 
-import tensorflow as tf
-import os
-import numpy as np
-import shutil
-import progressbar
-import tools
-import datasets.tfrecord_helper as tfrh
-import pathlib
 import argparse
+import os
+import pathlib
+import shutil
+
+import cv2
+import numpy as np
+import progressbar
+import tensorflow as tf
+
+import datasets.tfrecord_helper as tfrh
+import datasets.util
+import tools
+
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
+__logger = tools.get_logger(__name__, do_file_logging = False)
 
 
-
-__logger = tools.get_logger(__name__, do_file_logging=False)
-
-
-def prepare_dataset(dataset_location):
+def prepare_dataset(dataset_location, image_width, image_height):
     """"
         Serializes the FHAD dataset at dataset_location to tfrecord files at dataset_location/tfrecord_data
     """
     skeleton_location = os.path.join(dataset_location, "Hand_pose_annotation_v1")
     img_basepath = os.path.join(dataset_location, "Video_files")
-    tfrecord_basepath = os.path.join(dataset_location, "tfrecord_data")
-
+    tfrecord_basepath = os.path.join(dataset_location,
+                                     "tfrecord_data-{}_{}".format(image_width,
+                                                                  image_height))
     train_subjects = ["Subject_1", "Subject_3", "Subject_4"]
     validate_subjects = ["Subject_2"]
 
@@ -64,8 +71,8 @@ def prepare_dataset(dataset_location):
         chunk_idx = 0
 
         if progbar: del progbar
-        progbar = progressbar.ProgressBar(widgets=[progressbar.Bar(), progressbar.Percentage(), progressbar.ETA()])
-        progbar.start(max_value=len(all_skel_files[idx]))
+        progbar = progressbar.ProgressBar(widgets = [progressbar.Bar(), progressbar.Percentage(), progressbar.ETA()])
+        progbar.start(max_value = len(all_skel_files[idx]))
 
         for file_idx, file in enumerate(all_skel_files[idx]):
 
@@ -85,6 +92,12 @@ def prepare_dataset(dataset_location):
 
                 with tf.io.gfile.GFile(img_path, 'rb') as fid:
                     img = fid.read()
+                    if 480 != image_height or 640 != image_width:
+                        img_decoded = tf.image.decode_png(img, channels = 1, dtype = tf.dtypes.uint16)
+                        img_decoded = tf.image.resize(img_decoded, [image_height, image_width])
+                        img_decoded = tf.cast(img_decoded, dtype = tf.dtypes.uint16)
+                        img_encoded = tf.image.encode_png(img_decoded)
+                        img = img_encoded
 
                 if sample_idx % max_chunk_size == 0:
                     # write data to chunk file
@@ -92,7 +105,34 @@ def prepare_dataset(dataset_location):
                     record_writer = tf.io.TFRecordWriter(os.path.join(tfrecord_basepath, filename))
                     chunk_idx += 1
 
-                tfrecord_str = tfrh.make_standard_pose_record(sample_idx, img, 640, 480, skeleton)
+                cam_intr = np.array([
+                        [475.065948, 0.0, 315.944855],
+                        [0.0, 475.065857, 245.287079],
+                        [0.0, 0.0, 1.0]
+                        ])
+
+                skel_2d = tools.project_2d(skeleton.reshape(21, 3), cam_intr)
+
+                if 480 != image_height or 640 != image_width:
+                    skel_2d = skel_2d.dot(np.array([[image_width / 640.0, 0.0],
+                                                    [0.0, image_height / 480.0]]))
+
+                skel_maps = datasets.util.pts_to_confmaps(skel_2d,
+                                                          image_width,
+                                                          image_height,
+                                                          sigma = 10)
+                skel_maps = skel_maps * 2 ** 16
+                skel_maps = skel_maps.astype(np.uint16)
+                skel_maps_encoded = [
+                        cv2.imencode(".png", m[:, :, np.newaxis])[1].tostring() for
+                        m in skel_maps]
+
+                tfrecord_str = tfrh.make_standard_pose_record(sample_idx,
+                                                              img,
+                                                              image_width,
+                                                              image_height,
+                                                              skeleton,
+                                                              skel_maps_encoded)
                 record_writer.write(tfrecord_str)
                 sample_idx += 1
 
@@ -117,10 +157,22 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
             '--root',
-            type=str,
-            required=True,
-            help='Root path for the dataset'
+            type = str,
+            required = True,
+            help = 'Root path for the dataset'
+            )
+    parser.add_argument(
+            '--image_width',
+            type = str,
+            default = 224,
+            help = 'Width of input images and skeleton maps'
+            )
+    parser.add_argument(
+            '--image_height',
+            type = str,
+            default = 224,
+            help = 'Height of input images and skeleton maps'
             )
     args = parser.parse_args()
 
-    prepare_dataset(args.root)
+    prepare_dataset(args.root, args.image_width, args.image_height)

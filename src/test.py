@@ -43,7 +43,7 @@ def twod_argmax(val):
 if __name__ == '__main__':
 
     model = tf.keras.models.load_model(
-            'E:\\Google Drive\\UNI\\Master\\Thesis\\src\\data\\pose_est\\2d'
+            'E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d'
             '\\ueber_weihnachten\\pose_est_refined.hdf5', compile = False)
 
     win_name_net = 'net'
@@ -67,11 +67,14 @@ if __name__ == '__main__':
             cv2.waitKey(33)
     else:
         lpf = refiners.LowpassRefiner(2, 30, max_sample_history = 300)
+        one_euro = refiners.OneEuroFilter(data_shape = (21, 2), min_cutoff = 1.0, beta = 1.0, d_cutoff = 1.0)
+
         do_filter = False
-        cam = RealsenseCamera({
-                'file': 'E:\\Google Drive\\UNI\\Master\\Thesis\\src\\realsense_settings.json' })
+        cam = RealsenseCamera({ 'file': 'realsense_settings.json' })
         run = True
+        loop_index = 0
         while run:
+            loop_index += 1
             loop_start_time = datetime.now()
             time, depth_raw, rgb = cam.get_frame()
             depth = cv2.resize(depth_raw, (224, 224))
@@ -82,7 +85,8 @@ if __name__ == '__main__':
             coords = coords.numpy().squeeze()
 
             if do_filter:
-                coords = lpf.filter(coords)
+                # coords = lpf.filter(coords)
+                coords = one_euro(loop_index, coords)
 
             res = res.squeeze()
             values = tf.reduce_max(res, axis = [0, 1]).numpy()
@@ -113,7 +117,10 @@ if __name__ == '__main__':
 
             cv2.putText(prod_img, "{:.01f} fps".format(fps), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0))
 
+            net_img = cv2.cvtColor(net_img, cv2.COLOR_RGB2BGR)
             cv2.imshow(win_name_net, net_img)
+
+            prod_img = cv2.cvtColor(prod_img, cv2.COLOR_RGB2BGR)
             cv2.imshow(win_name_net_prod, prod_img)
 
             key = cv2.waitKey(1) & 0xFF
@@ -123,6 +130,7 @@ if __name__ == '__main__':
                 print("do_filter: {}".format(do_filter))
             if key == 27:
                 run = False
+
         del cam
     cv2.destroyAllWindows()
     del model
