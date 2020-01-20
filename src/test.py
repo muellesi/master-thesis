@@ -67,12 +67,13 @@ if __name__ == '__main__':
             cv2.waitKey(33)
     else:
         lpf = refiners.LowpassRefiner(2, 30, max_sample_history = 300)
-        one_euro = refiners.OneEuroFilter(data_shape = (21, 2), min_cutoff = 0.7, beta = 0.001, d_cutoff = 0.7)
+        one_euro = refiners.OneEuroFilter(freq = 30, mincutoff = 1.0, beta = 0.01)
 
-        do_filter = False
+        do_filter = True
         cam = RealsenseCamera({ 'file': 'realsense_settings.json' })
         run = True
         loop_index = 0
+        global_start_time = datetime.now()
         while run:
             loop_index += 1
             loop_start_time = datetime.now()
@@ -86,10 +87,6 @@ if __name__ == '__main__':
 
             coords = twod_argmax(res)
             coords = coords.numpy().squeeze()
-
-            if do_filter:
-                # coords = lpf.filter(coords)
-                coords = one_euro(loop_index, coords)
 
             res = res.squeeze()
 
@@ -110,6 +107,11 @@ if __name__ == '__main__':
             prod_img = tools.colorize_cv(depth_raw.squeeze())
 
             if value_norm > 0.5:
+
+                if do_filter:
+                    # coords = lpf.filter(coords)
+                    coords = one_euro(coords, (datetime.now() - global_start_time).total_seconds())
+
                 coords_scaled = coords * np.array([480 / 224, 640 / 224])
                 tools.render_skeleton(prod_img, np.stack([coords_scaled[:, 1], coords_scaled[:, 0]], axis = 1), True,
                                       np.round(values, 3))
@@ -130,8 +132,21 @@ if __name__ == '__main__':
             if key == 102:
                 do_filter = not do_filter
                 print("do_filter: {}".format(do_filter))
-            if key == 27:
+            elif key == 27:
                 run = False
+            elif key == 105: #i
+                one_euro.set_beta(one_euro.get_beta() * 10)
+                print(one_euro.get_beta())
+            elif key == 107: # k
+                one_euro.set_beta(one_euro.get_beta() / 10)
+                print(one_euro.get_beta())
+            elif key == 106: # j
+                one_euro.set_mincutoff(one_euro.get_mincutoff() / 10)
+                print(one_euro.get_mincutoff())
+            elif key == 108: # l
+                one_euro.set_mincutoff(one_euro.get_mincutoff() * 10)
+                print(one_euro.get_mincutoff())
+
 
         del cam
     cv2.destroyAllWindows()
