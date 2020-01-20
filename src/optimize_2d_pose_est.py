@@ -34,7 +34,7 @@ def prepare_ds(name, ds, add_noise, add_empty, augment, hparams):
                 num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
     ds = ds.map(lambda img, confm:
-                (datasets.util.scale_clip_image_data(img, 1.0 / 1000.0),
+                (datasets.util.scale_clip_image_data(img, 1.0 / 1500.0),
                  datasets.util.scale_clip_image_data(confm, 1.0 / 2 ** 16)),
                 num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
