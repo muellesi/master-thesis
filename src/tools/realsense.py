@@ -68,6 +68,9 @@ class RealsenseCamera:
         self.filter_decimate = rs.decimation_filter()
         self.filter_decimate.set_option(rs.option.filter_magnitude, 2 ** 0)
         self.filter_spatial = rs.spatial_filter(0.5, 20.0, 2.0, 0)
+        self.filter_temporal = rs.temporal_filter(0.4, 20, 1)
+        self.depth_to_disparity = rs.disparity_transform(True)
+        self.disparity_to_depth = rs.disparity_transform(False)
         self.filter_colorize = rs.colorizer()
 
         self.depth_intrinsics = None
@@ -75,7 +78,8 @@ class RealsenseCamera:
         self.get_frame()  # get a single frame to obtain valid intrinsics etc
 
 
-    def __find_device_that_supports_advanced_mode():
+    def __find_device_that_supports_advanced_mode(self):
+        global __DS5_product_ids
         ctx = rs.context()
         ds5_dev = rs.device()
         devices = ctx.query_devices()
@@ -107,16 +111,19 @@ class RealsenseCamera:
 
     def get_frame(self):
         frames = self.pipeline.wait_for_frames()
-        depth_frame_raw = frames.get_depth_frame()
+        depth_frame = frames.get_depth_frame()
         color_frame = frames.get_color_frame()
 
-        depth_frame = self.filter_decimate.process(depth_frame_raw)
+        #depth_frame = self.filter_decimate.process(depth_frame_raw)
+        depth_frame = self.depth_to_disparity.process(depth_frame)
         depth_frame = self.filter_spatial.process(depth_frame)
+        depth_frame = self.filter_temporal.process(depth_frame)
+        depth_frame = self.disparity_to_depth.process(depth_frame)
 
         self.depth_intrinsics = rs.video_stream_profile(depth_frame.profile).get_intrinsics()
 
-        depth_image = np.asanyarray(depth_frame.download_data())
-        color_image = np.asanyarray(color_frame.download_data())
+        depth_image = np.asanyarray(depth_frame.get_data())
+        color_image = np.asanyarray(color_frame.get_data())
 
         return time.time(), depth_image, color_image
 
@@ -141,7 +148,7 @@ class RealsenseCamera:
                 continue
 
             # Convert images to numpy arrays
-            depth_image = np.asanyarray(depth_frame.download_data())
+            depth_image = np.asanyarray(depth_frame.get_data())
             depth_colormap = tools.colorize(depth_image, vmin=0, vmax=4000, cmap=cmap).numpy()
             cv2.imshow('autocycleStream', depth_colormap)
             if num_cycles >= 0:

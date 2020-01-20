@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow_probability as tfp
 from scipy.stats import multivariate_normal
 
 import tools
@@ -114,6 +115,41 @@ def make_img_ds_from_glob(glob_pattern, width, height, value_scale = None,
     return ds
 
 
+@tf.function
+def gaussian_kernel(size: int,
+                    mean: float,
+                    std: float,
+                    ):
+    """Makes 2D gaussian Kernel for convolution.
+    Source: https://stackoverflow.com/questions/55339233/converting-a-numpy-operation-to-output-of-tensorflow-layer
+    """
+
+    d = tfp.distributions.Normal(mean, std)
+    vals = d.prob(tf.range(start = -size, limit = size + 1, dtype = tf.float32))
+    gauss_kernel = tf.einsum('i,j->ij',
+                             vals,
+                             vals)
+    return gauss_kernel / tf.reduce_sum(gauss_kernel)
+
+
+@tf.function
+def gaussian_smooth(image, radius):
+    """
+    Smooths an image with dimensions [h, w, c]
+    """
+    gauss_kernel = gaussian_kernel(3 * radius, 0, radius)
+    e = tf.eye(image.shape[2], image.shape[2], batch_shape = [gauss_kernel.shape[0], gauss_kernel.shape[1]])
+    e = tf.transpose(e, [2, 3, 0, 1])
+    gauss_kernel_layered = e * gauss_kernel
+    gauss_kernel_layered = tf.transpose(gauss_kernel_layered, [2, 3, 0, 1])
+
+    img = tf.cast(image, dtype=tf.float32)
+    img_batched = img[tf.newaxis, :, :, :]
+
+    res = tf.squeeze(tf.nn.conv2d(img_batched, gauss_kernel_layered, strides = [1, 1, 1, 1], padding = "SAME"))
+    return res
+
+
 def np_augment_shift(pooled_images):
     pooled_images = tf.keras.preprocessing.image.random_shift(pooled_images,
                                                               wrg = 0.2,
@@ -139,7 +175,7 @@ def np_augment_shear(pooled_images):
 
 def np_augment_rotate(pooled_images):
     pooled_images = tf.keras.preprocessing.image.random_rotation(pooled_images,
-                                                                 rg = 45,
+                                                                 rg = 180,
                                                                  row_axis = 0,
                                                                  col_axis = 1,
                                                                  channel_axis = 2,

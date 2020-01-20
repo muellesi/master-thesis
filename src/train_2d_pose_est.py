@@ -20,23 +20,16 @@ net_input_height = 224
 output_data_dir = "E:\\MasterDaten\\Results\\pose_est_2d"
 batch_size = 17
 max_epochs = 100
-training_steps_per_epoch = 1000  # 5000
-validation_steps = 500  # 1000
-learning_rate = 0.0005
+learning_rate = 0.0007
 tensorboard_dir = os.path.join(output_data_dir, 'tensorboard')
 checkpoint_dir = os.path.join(output_data_dir, 'checkpoints')
 final_save_name = os.path.join(output_data_dir, 'pose_est_final.hdf5')
 refined_save_name = os.path.join(output_data_dir, 'pose_est_refined.hdf5')
 checkpoint_prefix = 'cp_2d_pose_epoch'
 num_skel_joints = 21
-encoder_pretrained = "E:\\Google " \
-                     "Drive\\UNI\\Master\\Thesis\\src\\data\\structural" \
-                     "\\ae_with_bg_high_acc\\partial_save_46_layer_0(" \
-                     "mobilenetv2_1.00_224).hdf5"
+encoder_pretrained = "E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\structural\\ae_with_bg_high_acc\\partial_save_46_layer_0(mobilenetv2_1.00_224).hdf5"
 empty_background_path = 'E:\\MasterDaten\\Datasets\\StructuralLearning' \
                         '\\augmentation\\**\\*.png'
-
-ds_cache_path = 'E:\\MasterDaten\\Cache\\2dpose\\'
 
 
 def prepare_ds(name, ds, add_noise, add_empty, augment):
@@ -67,7 +60,7 @@ def prepare_ds(name, ds, add_noise, add_empty, augment):
                     num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
     if augment:
-        ds = ds.map(datasets.util.augment_depth_and_confmaps,
+        ds = ds.map(lambda img, confm: datasets.util.augment_depth_and_confmaps(img, confm, 0.6),
                     num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
     if add_empty:
@@ -197,9 +190,9 @@ def train_pose_estimator(train_data, validation_data, test_data,
             pose_estimator.load_weights(saved_model)
         except:
             logger.info(
-                "Was not able to load saved weights {} with unlocked "
-                "encoder. Locking it temporarily.".format(
-                    saved_model))
+                    "Was not able to load saved weights {} with unlocked "
+                    "encoder. Locking it temporarily.".format(
+                            saved_model))
             pose_estimator.get_layer(index = 1).trainable = False
             pose_estimator.load_weights(saved_model)
             logger.info("Weights loaded. Unlocking encoder!")
@@ -250,7 +243,8 @@ if __name__ == '__main__':
 
     ds_provider = SerializedDataset(ds_settings["BigHands224ConfMap"])
 
-    ds_train = ds_provider.get_data("train")
+    ds_train = ds_provider.get_data("train",
+                                    )
     ds_train = prepare_ds('train',
                           ds_train,
                           add_noise = True,
@@ -301,5 +295,4 @@ if __name__ == '__main__':
     train_pose_estimator(ds_train,
                          ds_val,
                          ds_test,
-                         saved_model = 'E:\\MasterDaten\\Results\\pose_est_2d\\checkpoints\\cp_2d_pose_epoch_refine_.01.hdf5',
-                         skip_pretraining = True)
+                         skip_pretraining = False)

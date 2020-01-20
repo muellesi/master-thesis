@@ -1,16 +1,14 @@
 import platform
-from datetime import datetime
-
-import requests
-import tensorflow as tf
 import pprint
 
+import tensorflow as tf
 
-def _telegram_escape(message):
-    must_escape = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
-    for char in must_escape:
-        message = message.replace(char, '\\' + char)
-    return message
+import tools
+import tools.telegram_tools
+
+
+
+logger = tools.get_logger(__name__, do_file_logging = True)
 
 
 class TelegramCallback(tf.keras.callbacks.Callback):
@@ -26,23 +24,10 @@ class TelegramCallback(tf.keras.callbacks.Callback):
 
 
     def _send_message(self, message):
-        url = "https://api.telegram.org/bot{}:{}/sendMessage".format(self.user, self.token)
-
         message_title = "Training {} on #{}".format("" if self.training_id is None else "#" + str(self.training_id),
                                                     self.hostname)
 
-        composed_message = "*{title}*\n\n{message_body}\n\n_{timestamp}_".format(
-                title = _telegram_escape(message_title),
-                message_body = _telegram_escape(message),
-                timestamp = _telegram_escape(str(datetime.now()))
-                )
-
-        data = { 'chat_id'   : self.chat_id,
-                 'text'      : composed_message,
-                 'parse_mode': "MarkdownV2",
-                 }
-
-        r = requests.post(url = url, json = data)
+        tools.telegram_tools.telegram_sendMessage(self.user, self.token, self.chat_id, message, message_title)
 
 
     def on_epoch_end(self, epoch, logs):
@@ -60,6 +45,22 @@ class TelegramCallback(tf.keras.callbacks.Callback):
         if self.training_description is not None:
             message += "\n"
             message += str(self.training_description)
+        self._send_message(message)
+
+
+    def on_test_begin(self, logs = None):
+        if self.training_id is not None:
+            message = "{}: Start validation!".format(self.training_id)
+        else:
+            message = "Start validation!"
+        self._send_message(message)
+
+
+    def on_test_end(self, logs = None):
+        if self.training_id is not None:
+            message = "{}: End validation!".format(self.training_id)
+        else:
+            message = "End validation!"
         self._send_message(message)
 
 

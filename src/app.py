@@ -25,8 +25,8 @@ last_frame_time = None
 last_frame_depth = None
 last_frame_rgb = None
 
-pose_model_path = 'E:\\Google Drive\\UNI\\Master\\Thesis\\src\\data\\pose_est\\2d\\ueber_weihnachten\\pose_est_refined.hdf5'
-camera_settings_file = 'E:\\Google Drive\\UNI\\Master\\Thesis\\src\\realsense_settings.json'
+pose_model_path = 'E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d\\ueber_weihnachten\\pose_est_refined.hdf5'
+camera_settings_file = 'E:\\Google Drive\\UNI\\Master\\Thesis\\ThesisCode\\src\\realsense_settings.json'
 gesture_sample_length = 90
 norm_limit = 0.5
 
@@ -41,7 +41,7 @@ def twod_argmax(val):
 
 def cv_from_frame(frame, model):
     depth = cv2.resize(frame, (224, 224))
-    depth = datasets.util.scale_clip_image_data(depth, 1.0 / 1000.0)
+    depth = datasets.util.scale_clip_image_data(depth, 1.0 / 2500.0)
 
     # Pose estimation
     depth = np.expand_dims(np.expand_dims(depth, 2), 0)
@@ -110,7 +110,7 @@ def record_sample(model):
         sample_frames.appendleft(coords)
 
         prod_img = tools.colorize_cv(depth_raw.squeeze())
-        if value_norm > 0.5:
+        if value_norm > 0.7:
             coords_scaled = coords * np.array([480 / 224, 640 / 224])
             tools.render_skeleton(prod_img, np.stack([coords_scaled[:, 1], coords_scaled[:, 0]], axis = 1), True,
                                   np.round(values, 3))

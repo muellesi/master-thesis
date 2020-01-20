@@ -42,9 +42,11 @@ class SerializedDataset:
         self.depth_height = config["depth_height"]
 
 
-    def get_data(self, subset):
+    def get_data(self, subset, cache = False):
         ds = tf.data.Dataset.list_files(os.path.join(self.data_root, subset + "*.tfrecord"))
         ds = ds.interleave(open_tf_record, cycle_length = 8, block_length = 1)
+        if cache:
+            ds = ds.cache()
         ds = ds.map(decode_img, num_parallel_calls=tf.data.experimental.AUTOTUNE)
         return ds
 
