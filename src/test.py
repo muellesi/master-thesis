@@ -70,6 +70,7 @@ if __name__ == '__main__':
         one_euro = refiners.OneEuroFilter(freq = 30, mincutoff = 1.0, beta = 0.01)
 
         do_filter = True
+        show_net_output = True
         cam = RealsenseCamera({ 'file': 'realsense_settings.json' })
         run = True
         loop_index = 0
@@ -80,6 +81,16 @@ if __name__ == '__main__':
             time, depth_raw, rgb = cam.get_frame()
 
             depth = cv2.resize(depth_raw, (224, 224))
+
+            depth = tf.cast(depth, dtype = tf.float32)
+            thresh = tf.constant(150, dtype = tf.float32)
+            mask = tf.greater(depth, thresh)
+            non_zero_depth = tf.boolean_mask(depth, mask)
+            closest_distance = tf.reduce_min(non_zero_depth)
+
+            upper_mask = tf.where(tf.less_equal(depth, closest_distance + 500.0),tf.ones_like(depth), tf.zeros_like(depth))
+            depth = depth * upper_mask
+
             depth = datasets.util.scale_clip_image_data(depth, 1.0 / 2500.0)
 
             depth = np.expand_dims(np.expand_dims(depth, 2), 0)
@@ -100,7 +111,9 @@ if __name__ == '__main__':
 
             complete_map = np.sum(res, axis = 2)
 
-            net_img = depth.squeeze() + complete_map
+            net_img = depth.squeeze()
+            if show_net_output:
+                net_img = net_img + complete_map
             net_img = tools.colorize_cv(net_img)
 
             depth_raw = depth_raw.clip(min = None, max = 800)
@@ -146,7 +159,8 @@ if __name__ == '__main__':
             elif key == 108: # l
                 one_euro.set_mincutoff(one_euro.get_mincutoff() * 10)
                 print(one_euro.get_mincutoff())
-
+            elif key == 110: # n
+                show_net_output = not show_net_output
 
         del cam
     cv2.destroyAllWindows()
