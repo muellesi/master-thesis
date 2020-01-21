@@ -132,7 +132,8 @@ if __name__ == '__main__':
             loop_end_time = datetime.now()
             fps = (1 / (loop_end_time - loop_start_time).microseconds) * 1e6
 
-            cv2.putText(prod_img, "{:.01f} fps".format(fps), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0))
+            cv2.putText(prod_img, "{:.01f} fps".format(fps), (50, 50), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 0), 2)
+            cv2.putText(prod_img, "{:.01f} fps".format(fps), (50, 50), cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 1)
 
             net_img = cv2.cvtColor(net_img, cv2.COLOR_RGB2BGR)
             cv2.imshow(win_name_net, net_img)
@@ -149,16 +150,16 @@ if __name__ == '__main__':
                 run = False
             elif key == 105: #i
                 one_euro.set_beta(one_euro.get_beta() * 10)
-                print(one_euro.get_beta())
+                print("Beta: {}".format(one_euro.get_beta()))
             elif key == 107: # k
                 one_euro.set_beta(one_euro.get_beta() / 10)
-                print(one_euro.get_beta())
+                print("Beta: {}".format(one_euro.get_beta()))
             elif key == 106: # j
                 one_euro.set_mincutoff(one_euro.get_mincutoff() / 10)
-                print(one_euro.get_mincutoff())
+                print("Min_Cutoff: {}".format(one_euro.get_mincutoff()))
             elif key == 108: # l
                 one_euro.set_mincutoff(one_euro.get_mincutoff() * 10)
-                print(one_euro.get_mincutoff())
+                print("Min_Cutoff: {}".format(one_euro.get_mincutoff()))
             elif key == 110: # n
                 show_net_output = not show_net_output
 
