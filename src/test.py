@@ -42,10 +42,13 @@ def twod_argmax(val):
 
 if __name__ == '__main__':
 
+    #model = tf.keras.models.load_model(
+    #        'E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d'
+    #        '\\ueber_weihnachten\\pose_est_refined.hdf5', compile = False)
+
     model = tf.keras.models.load_model(
             'E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d'
-            '\\ueber_weihnachten\\pose_est_refined.hdf5', compile = False)
-
+            '\\weiter_trainiert\\checkpoints\\cp_2d_pose_epoch_refine_.43.hdf5', compile = False)
     win_name_net = 'net'
     win_name_net_prod = 'prod'
     cv2.namedWindow(win_name_net)
@@ -91,7 +94,7 @@ if __name__ == '__main__':
             upper_mask = tf.where(tf.less_equal(depth, closest_distance + 500.0),tf.ones_like(depth), tf.zeros_like(depth))
             depth = depth * upper_mask
 
-            depth = datasets.util.scale_clip_image_data(depth, 1.0 / 2500.0)
+            depth = datasets.util.scale_clip_image_data(depth, 1.0 / 1500.0)
 
             depth = np.expand_dims(np.expand_dims(depth, 2), 0)
             res = model.predict(depth)
@@ -119,13 +122,18 @@ if __name__ == '__main__':
             depth_raw = depth_raw.clip(min = None, max = 800)
             prod_img = tools.colorize_cv(depth_raw.squeeze())
 
-            if value_norm > 0.5:
+            if value_norm > 1.3:
 
                 if do_filter:
                     # coords = lpf.filter(coords)
                     coords = one_euro(coords, (datetime.now() - global_start_time).total_seconds())
 
                 coords_scaled = coords * np.array([480 / 224, 640 / 224])
+                max_x, max_y = np.max(coords_scaled, axis = 0)
+                min_x, min_y = np.min(coords_scaled, axis=0)
+
+                tools.render_bb(prod_img, (min_x - 10, min_y - 10, max_x + 10, max_y + 10), value_norm)
+
                 tools.render_skeleton(prod_img, np.stack([coords_scaled[:, 1], coords_scaled[:, 0]], axis = 1), True,
                                       np.round(values, 3))
 
@@ -134,6 +142,7 @@ if __name__ == '__main__':
 
             cv2.putText(prod_img, "{:.01f} fps".format(fps), (50, 50), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 0), 2)
             cv2.putText(prod_img, "{:.01f} fps".format(fps), (50, 50), cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 1)
+
 
             net_img = cv2.cvtColor(net_img, cv2.COLOR_RGB2BGR)
             cv2.imshow(win_name_net, net_img)
@@ -165,4 +174,10 @@ if __name__ == '__main__':
 
         del cam
     cv2.destroyAllWindows()
+
     del model
+    del tf
+    print("App end!")
+
+    from sys import exit
+    exit(0)
