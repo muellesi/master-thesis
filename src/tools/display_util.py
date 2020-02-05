@@ -10,13 +10,13 @@ def render_bb(img, bb, label=None):
     """
     assert img.shape[2] == 3
     img = np.ascontiguousarray(img)
-    cv2.rectangle(img, (bb[0], bb[1]), (bb[2], bb[3]), (255, 0, 0), 2)
+    cv2.rectangle(img, (int(bb[1]), int(bb[0])), (int(bb[3]), int(bb[2])), (255, 0, 0), 2)
     if label is not None:
         # see https://gist.github.com/aplz/fd34707deffb208f367808aade7e5d5c#file-draw_text_with_background_opencv-py
         font = cv2.FONT_HERSHEY_SIMPLEX
         (text_width, text_height) = cv2.getTextSize(str(label), font, fontScale=1, thickness=1)[0]
-        text_offset_x = bb[0] + 2
-        text_offset_y = bb[1] - 4
+        text_offset_y = int(bb[0]) + 2
+        text_offset_x = int(bb[1]) - 4
         box_coords = ((text_offset_x - 4, text_offset_y + 2), (text_offset_x + text_width + 2, text_offset_y - text_height - 2))
         cv2.rectangle(img, box_coords[0], box_coords[1], (255, 0, 0), cv2.FILLED)
         cv2.putText(img, str(label), (text_offset_x, text_offset_y), font, fontScale=1, color=(255, 255, 255), thickness=1)
