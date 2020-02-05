@@ -167,6 +167,44 @@
       "ptip"
     ]
   },
+  "NYU224ConfMapColab": {
+    "name": "NYU",
+    "location": "/gdrive/My Drive/tmp/NYU_w224_h224/tfrecord_data-224_224",
+    "gdrive_fid": "1dkpTs--bF-5OZsiFYuAs9e9HAOh4m3c1",
+    "has_depth": true,
+    "depth_width": 224,
+    "depth_height": 224,
+    "depth_intrinsics": {
+      "pp_x": 112,
+      "pp_y": 112,
+      "f_x": 205.81290275,
+      "f_y": 273.9683674
+    },
+    "has_rgb": false,
+    "joint_names": [
+      "wrist",
+      "tmcp",
+      "imcp",
+      "mmcp",
+      "rmcp",
+      "pmcp",
+      "tpip",
+      "tdip",
+      "ttip",
+      "ipip",
+      "idip",
+      "itip",
+      "mpip",
+      "mdip",
+      "mtip",
+      "rpip",
+      "rdip",
+      "rtip",
+      "ppip",
+      "pdip",
+      "ptip"
+    ]
+  },
   "MSRA": {
     "name": "MSRA",
     "location": "E:\\MasterDaten\\Datasets\\cvpr15_MSRAHandGestureDB\\tfrecord_data",
@@ -281,7 +319,45 @@
   },
   "BigHands224ConfMap": {
     "name": "BigHands",
-    "location": "E:\\MasterDaten\\Datasets\\BigHands2.2m\\tfrecord_data-224_224",
+    "location": "I:\\dataset_cache\\tfrecord_data-224_224",
+    "gdrive_fid": "1MN_csyuZytI_XVZyzlNPPOLLUwHL6eRI",
+    "has_depth": true,
+    "depth_width": 224,
+    "depth_height": 224,
+    "depth_intrinsics": {
+      "pp_x": 110.58069925,
+      "pp_y": 114.46730337,
+      "f_x": 166.2730818,
+      "f_y": 221.69739993
+    },
+    "has_rgb": false,
+    "joint_names": [
+      "wrist",
+      "tmcp",
+      "imcp",
+      "mmcp",
+      "rmcp",
+      "pmcp",
+      "tpip",
+      "tdip",
+      "ttip",
+      "ipip",
+      "idip",
+      "itip",
+      "mpip",
+      "mdip",
+      "mtip",
+      "rpip",
+      "rdip",
+      "rtip",
+      "ppip",
+      "pdip",
+      "ptip"
+    ]
+  },
+  "BigHands224ConfMapColab": {
+    "name": "BigHands",
+    "location": "/gdrive/My Drive/tmp/BigHands_w224_h224/tfrecord_data-224_224",
     "gdrive_fid": "1MN_csyuZytI_XVZyzlNPPOLLUwHL6eRI",
     "has_depth": true,
     "depth_width": 224,
