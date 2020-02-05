@@ -19,7 +19,7 @@ net_input_width = 224
 net_input_height = 224
 output_data_dir = "E:\\MasterDaten\\Results\\pose_est_2d"
 batch_size = 17
-max_epochs = 100
+max_epochs = 500
 learning_rate = 0.0007
 tensorboard_dir = os.path.join(output_data_dir, 'tensorboard')
 checkpoint_dir = os.path.join(output_data_dir, 'checkpoints')
@@ -40,7 +40,7 @@ def prepare_ds(name, ds, add_noise, add_empty, augment):
                 num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
     ds = ds.map(lambda img, confm:
-                (datasets.util.scale_clip_image_data(img, 1.0 / 2500.0),
+                (datasets.util.scale_clip_image_data(img, 1.0 / 1500.0),
                  datasets.util.scale_clip_image_data(confm, 1.0 / 2 ** 16)),
                 num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
@@ -60,15 +60,16 @@ def prepare_ds(name, ds, add_noise, add_empty, augment):
                     num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
     if augment:
-        ds = ds.map(lambda img, confm: datasets.util.augment_depth_and_confmaps(img, confm, 0.6),
-                    num_parallel_calls = tf.data.experimental.AUTOTUNE)
+        ds = ds.map(
+            lambda img, confm: datasets.util.augment_depth_and_confmaps(img, confm, augmentation_probability = 0.6),
+            num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
     if add_empty:
         ds_empty_imgs = datasets.util.make_img_ds_from_glob(
                 empty_background_path,
                 width = net_input_width,
                 height = net_input_height,
-                value_scale = 1.0 / 2500.0,
+                value_scale = 1.0 / 1500.0,
                 shuffle = True)
         ds_empty_imgs = ds_empty_imgs.map(lambda img: (
                 img, tf.zeros(
@@ -127,6 +128,9 @@ def train_pose_estimator(train_data, validation_data, test_data,
             confmap_labels = ds_provider.joint_names
             )
 
+    telegram_callback = tools.training_callbacks.TelegramCallback(telegram_user, telegram_token, telegram_chat,
+                                                                  "SingleTrainingRun")
+
     if not skip_pretraining:
         #######################################################################
         ##########################  Main training  ############################
@@ -152,7 +156,7 @@ def train_pose_estimator(train_data, validation_data, test_data,
                 loss = make_skewed_mse(-0.5),
                 verbose = 1,
                 add_metrics = [keypoint_error_metric],
-                custom_callbacks = [visu],
+                custom_callbacks = [visu, telegram_callback],
                 lr_reduce_patience = 2,
                 early_stop_patience = 5
                 )
@@ -211,10 +215,10 @@ def train_pose_estimator(train_data, validation_data, test_data,
             checkpoint_dir = checkpoint_dir,
             save_best_cp_only = True,
             cp_name = checkpoint_prefix + "_refine_",
-            loss = tf.keras.losses.mean_squared_error,
+            loss = make_skewed_mse(-0.5),
             verbose = 1,
             add_metrics = [keypoint_error_metric],
-            custom_callbacks = [visu]
+            custom_callbacks = [visu, telegram_callback]
             )
 
     logger.info("Refinement Training done.")
@@ -238,13 +242,18 @@ def train_pose_estimator(train_data, validation_data, test_data,
 
 
 if __name__ == '__main__':
+    with open('telegram_access.json', 'r') as f:
+        telegram_settings = json.load(f)
+        telegram_user = telegram_settings['user']
+        telegram_token = telegram_settings['token']
+        telegram_chat = telegram_settings['chat']
+
     with open("datasets.json", "r") as f:
         ds_settings = json.load(f)
 
     ds_provider = SerializedDataset(ds_settings["BigHands224ConfMap"])
 
-    ds_train = ds_provider.get_data("train",
-                                    )
+    ds_train = ds_provider.get_data("train")
     ds_train = prepare_ds('train',
                           ds_train,
                           add_noise = True,
@@ -295,4 +304,6 @@ if __name__ == '__main__':
     train_pose_estimator(ds_train,
                          ds_val,
                          ds_test,
-                         skip_pretraining = False)
+                         skip_pretraining = True,
+                         saved_model = "E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d\\ueber_weihnachten\\pose_est_refined.hdf5"
+                         )
