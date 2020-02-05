@@ -10,6 +10,7 @@ import tensorflow as tf
 import app_framework.actions
 import app_framework.gui.main_window
 import datasets.util
+import refiners
 import tools
 from app_framework.gesture_save_file import deserialize_to_gesture_collection
 from app_framework.gesture_save_file import serialize_gesture_collection
@@ -25,11 +26,14 @@ last_frame_time = None
 last_frame_depth = None
 last_frame_rgb = None
 
-pose_model_path = 'E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d\\ueber_weihnachten\\pose_est_refined.hdf5'
+pose_model_path = 'E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d\\weiter_trainiert\\checkpoints\\cp_2d_pose_epoch_refine_.43.hdf5'
 camera_settings_file = 'E:\\Google Drive\\UNI\\Master\\Thesis\\ThesisCode\\src\\realsense_settings.json'
 gesture_sample_length = 90
-norm_limit = 0.5
+norm_limit = 1.2
 
+filter_param_mincutoff = 1.0
+filter_param_beta = 0.01
+filter_param_freq = 30
 
 def twod_argmax(val):
     maxy = tf.argmax(tf.reduce_max(val, axis = 2), 1)
@@ -41,11 +45,21 @@ def twod_argmax(val):
 
 def cv_from_frame(frame, model):
     depth = cv2.resize(frame, (224, 224))
-    depth = datasets.util.scale_clip_image_data(depth, 1.0 / 2500.0)
+
+    depth = tf.cast(depth, dtype = tf.float32)
+    thresh = tf.constant(150, dtype = tf.float32)
+    mask = tf.greater(depth, thresh)
+    non_zero_depth = tf.boolean_mask(depth, mask)
+    closest_distance = tf.reduce_min(non_zero_depth)
+
+    upper_mask = tf.where(tf.less_equal(depth, closest_distance + 500.0), tf.ones_like(depth), tf.zeros_like(depth))
+    depth = depth * upper_mask
+
+    depth_clipped = datasets.util.scale_clip_image_data(depth, 1.0 / 1500.0)
 
     # Pose estimation
-    depth = np.expand_dims(np.expand_dims(depth, 2), 0)
-    res = model.predict(depth)
+    depth_clipped = np.expand_dims(np.expand_dims(depth_clipped, 2), 0)
+    res = model.predict(depth_clipped)
 
     # Get Maximum coordinates
     coords = twod_argmax(res)
@@ -97,6 +111,8 @@ def record_sample(model):
 
     sample_frames = collections.deque()
 
+    one_euro = refiners.OneEuroFilter(freq = filter_param_freq, mincutoff = filter_param_mincutoff, beta = filter_param_beta)
+    global_start_time = datetime.now()
     for i in range(gesture_sample_length):
         # Get Frame
         time, depth_raw, rgb = cam.get_frame()  # camera warm up
@@ -107,6 +123,7 @@ def record_sample(model):
         if value_norm < norm_limit:
             coords = np.zeros(coords.shape)
 
+        coords = one_euro(coords, (datetime.now() - global_start_time).total_seconds())
         sample_frames.appendleft(coords)
 
         prod_img = tools.colorize_cv(depth_raw.squeeze())
@@ -165,11 +182,11 @@ def run_app(model, action_manager, gesture_data):
             # X.append(sample.reshape(-1))
             # Y.append(idx + 1)
 
-            X.append(element_diff(sample).reshape(-1))
-            Y.append(idx + 1)
+            #X.append(element_diff(sample).reshape(-1))
+            #Y.append(idx + 1)
 
-            # X.append(wrist_relative(sample).reshape(-1))
-            # Y.append(idx + 1)
+            X.append(wrist_relative(sample).reshape(-1))
+            Y.append(idx + 1)
 
     gesture_classifier.set_train_data(X, Y)
 
@@ -182,6 +199,8 @@ def run_app(model, action_manager, gesture_data):
     win_name = 'Self learning gesture control for automotive application...'
     cv2.namedWindow(win_name)
 
+    one_euro = refiners.OneEuroFilter(freq = filter_param_freq, mincutoff = filter_param_mincutoff, beta = filter_param_beta)
+    global_start_time = datetime.now()
     while do_run:
 
         start_time = datetime.now()
@@ -193,14 +212,16 @@ def run_app(model, action_manager, gesture_data):
         if value_norm < norm_limit:
             coords = np.zeros(coords.shape)
 
+        coords = one_euro(coords, (datetime.now() - global_start_time).total_seconds())
+
         delta_coords = coords - last_coords
         last_coords = coords
 
         wrist_normalized_coords = wrist_relative(coords)
 
         # gesture_classifier.push_sample(coords.reshape(-1))
-        gesture_classifier.push_sample(delta_coords.reshape(-1))
-        # gesture_classifier.push_sample(wrist_normalized_coords.reshape(-1))
+        #gesture_classifier.push_sample(delta_coords.reshape(-1))
+        gesture_classifier.push_sample(wrist_normalized_coords.reshape(-1))
 
         gesture_prediction = gesture_classifier.predict()[0]
 
@@ -209,20 +230,22 @@ def run_app(model, action_manager, gesture_data):
             gesture_classifier.reset_queue()
 
             # debounce
-            if ((datetime.now() - last_action_time).microseconds > 600e3) or \
-                    ((datetime.now() - last_action_time).microseconds > 10e3 and not (last_gesture == gesture)):
+            if ((datetime.now() - last_action_time).total_seconds() > 0.3) or \
+                    ((datetime.now() - last_action_time).total_seconds() > 0.01 and not (last_gesture == gesture)):
                 last_gesture = gesture
                 last_action_time = datetime.now()
                 action_manager.exec_action(gesture.action)
+            else:
+                print("Recognized gesture {} but not executing because {}".format(gesture, (datetime.now() - last_action_time).total_seconds()))
         else:
             gesture = None
 
         end_time = datetime.now()
 
         key = cv2.waitKey(1) & 0xFF
-        if key == 27:
+        if key == 27:  # esc
             do_run = False
-        elif key == 100:
+        elif key == 100:  # d
             display_results = not display_results
 
         if display_results:
@@ -252,7 +275,9 @@ def run_app(model, action_manager, gesture_data):
                         color = (255, 255, 255), thickness = 1)
 
             # Current Gesture Probabilities
-            class_probabilities = dict(gesture_classifier.predict_proba())
+            class_probabilities = list(gesture_classifier.predict_proba())[0][1:]
+            class_probabilities = dict(zip([gesture_data[i-1].name for i in gesture_classifier.class_names], class_probabilities))
+
             cv2.putText(result_img, str(class_probabilities), (320, 60), cv2.FONT_HERSHEY_PLAIN, fontScale = 0.75,
                         color = (0, 0, 0), thickness = 2)
             cv2.putText(result_img, str(class_probabilities), (320, 60), cv2.FONT_HERSHEY_PLAIN, fontScale = 0.75,
