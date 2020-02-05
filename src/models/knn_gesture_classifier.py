@@ -44,6 +44,8 @@ class KNNClassifier():
     def set_train_data(self, X, Y):
         self.train_data = X
         self.train_data_labels = Y
+        for classname in self.train_data_labels:
+            self.add_class(classname)
         self.__fit()
 
 
