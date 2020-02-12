@@ -19,6 +19,7 @@ import tensorflow as tf
 import datasets.tfrecord_helper as tfrh
 import tools
 import datasets.util
+import matplotlib.pyplot as plt
 
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
@@ -31,7 +32,10 @@ def load_and_reencode(binfile):
     # Quote from https://jonathantompson.github.io/NYU_Hand_Pose_Dataset.htm#download:
     # "Note: In each depth png file the top 8 bits of depth are packed into the green channel and the lower 8 bits into blue."
     img = cv2.imread(binfile, cv2.IMREAD_UNCHANGED)
-    img = img[:, :, 2] + img[:, :, 1] * 256.0
+    top_bits = img[:, :, 1] * 256
+    lower_bits = img[:, :, 0] # imread uses bgr format...
+    img = top_bits + lower_bits
+    img[img>1500] = 0.0
     img = np.expand_dims(img, axis = 2)
     success, encoded = cv2.imencode(".png", img.astype(np.uint16))
     return encoded.tobytes()
@@ -126,12 +130,12 @@ def prepare_dataset(dataset_location, image_width, image_height):
                     m in skel_maps]
 
 
-            tfrecord_str = tfrh.make_standard_pose_record(i,
-                                                          img,
-                                                          image_width,
-                                                          image_height,
-                                                          skel,
-                                                          skel_maps_encoded)
+            tfrecord_str = tfrh.make_standard_pose_record_with_confmaps(i,
+                                                                        img,
+                                                                        image_width,
+                                                                        image_height,
+                                                                        skel,
+                                                                        skel_maps_encoded)
 
             record_writer.write(tfrecord_str)
 

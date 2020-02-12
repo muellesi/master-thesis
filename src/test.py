@@ -1,4 +1,5 @@
 import json
+from collections import deque
 from datetime import datetime
 
 import cv2
@@ -40,6 +41,13 @@ def twod_argmax(val):
     return maxs
 
 
+def angle_between_keypoints(start, mid, end):
+    seg1 = end - mid
+    seg2 = start - mid
+    angle = np.arccos(seg1.dot(seg2) / (np.linalg.norm(seg1) * np.linalg.norm(seg2)))
+    return angle
+
+
 if __name__ == '__main__':
 
     #model = tf.keras.models.load_model(
@@ -48,7 +56,8 @@ if __name__ == '__main__':
 
     model = tf.keras.models.load_model(
             'E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d'
-            '\\weiter_trainiert\\checkpoints\\cp_2d_pose_epoch_refine_.43.hdf5', compile = False)
+            '\\weiter_trainiert\\checkpoints\\pose_est_refined.hdf5', compile = False)
+
     win_name_net = 'net'
     win_name_net_prod = 'prod'
     cv2.namedWindow(win_name_net)
@@ -74,10 +83,18 @@ if __name__ == '__main__':
 
         do_filter = True
         show_net_output = True
+        show_bounding_box = False
         cam = RealsenseCamera({ 'file': 'realsense_settings.json' })
         run = True
         loop_index = 0
         global_start_time = datetime.now()
+
+        gesture_mode = False
+        gesture_mode_switch_cooldown = 2
+        gesture_mode_switch_cooldown_counter = 0
+
+        gesture_keypoints = deque(maxlen = 60)
+
         while run:
             loop_index += 1
             loop_start_time = datetime.now()
@@ -86,29 +103,32 @@ if __name__ == '__main__':
             depth = cv2.resize(depth_raw, (224, 224))
 
             depth = tf.cast(depth, dtype = tf.float32)
-            thresh = tf.constant(150, dtype = tf.float32)
+            thresh = tf.constant(105, dtype = tf.float32)
             mask = tf.greater(depth, thresh)
             non_zero_depth = tf.boolean_mask(depth, mask)
             closest_distance = tf.reduce_min(non_zero_depth)
 
-            upper_mask = tf.where(tf.less_equal(depth, closest_distance + 500.0),tf.ones_like(depth), tf.zeros_like(depth))
+            upper_mask = tf.where(tf.less_equal(depth, closest_distance + 400.0), tf.ones_like(depth),
+                                  tf.zeros_like(depth))
             depth = depth * upper_mask
 
             depth = datasets.util.scale_clip_image_data(depth, 1.0 / 1500.0)
 
             depth = np.expand_dims(np.expand_dims(depth, 2), 0)
+
             res = model.predict(depth)
 
             coords = twod_argmax(res)
             coords = coords.numpy().squeeze()
 
+            # find maximum value for hand detection
             res = res.squeeze()
-
             values = tf.reduce_max(res, axis = [0, 1]).numpy()
 
             value_norm = np.linalg.norm(values)
             value_max = np.max(values)
             value_min = np.min(values)
+            value_mean = np.mean(values)
 
             # print("Norm: {}, Max: {}, Min: {}".format(value_norm, value_max, value_min))
 
@@ -122,7 +142,11 @@ if __name__ == '__main__':
             depth_raw = depth_raw.clip(min = None, max = 800)
             prod_img = tools.colorize_cv(depth_raw.squeeze())
 
-            if value_norm > 1.3:
+            prod_img = np.flip(prod_img, 1)  # feels more natural
+            prod_img = np.ascontiguousarray(prod_img)
+            coords[:, 1] = 224 - coords[:, 1]
+
+            if value_mean > 0.4: # value_norm > 1.3:
 
                 if do_filter:
                     # coords = lpf.filter(coords)
@@ -130,9 +154,54 @@ if __name__ == '__main__':
 
                 coords_scaled = coords * np.array([480 / 224, 640 / 224])
                 max_x, max_y = np.max(coords_scaled, axis = 0)
-                min_x, min_y = np.min(coords_scaled, axis=0)
+                min_x, min_y = np.min(coords_scaled, axis = 0)
 
-                tools.render_bb(prod_img, (min_x - 10, min_y - 10, max_x + 10, max_y + 10), value_norm)
+                # check for gesture pose
+                w_idx = 0
+                tip_idxs = [8, 11, 14, 17, 20]
+                w_dists = np.linalg.norm(coords_scaled - coords_scaled[w_idx], axis = 1)
+                w_tip_dists = w_dists[tip_idxs]
+
+                gesture_cond = True
+                #gesture_cond = np.mean(w_tip_dists[[0, 1]]) > 2 * np.median(w_tip_dists[[0, 1, 2, 3, 4]], axis = 0)
+                gesture_cond = gesture_cond and w_tip_dists[0] > 1.2 * w_dists[7]
+                gesture_cond = gesture_cond or w_tip_dists[1] > 1.2 * w_dists[9]
+                #gesture_cond = gesture_cond or w_tip_dists[0] > 1.2 * w_dists[7]  # thumb is stretched
+                #gesture_cond = gesture_cond or w_tip_dists[1] > 1.2 * w_dists[9]  # index finger is stretched
+                #gesture_cond = gesture_cond or w_tip_dists[2] > 1.2 * w_dists[11]  # index finger is stretched
+                #gesture_cond = gesture_cond or w_tip_dists[3] > 1.2 * w_dists[13]  # index finger is stretched
+                #gesture_cond = gesture_cond or w_tip_dists[4] > 1.2 * w_dists[15]  # index finger is stretched
+
+                #gesture_cond = gesture_cond and (angle_between_keypoints(coords_scaled[8], coords_scaled[0], coords_scaled[11]) > np.pi / 6)
+
+                if gesture_cond:
+                    if not gesture_mode:
+                        gesture_mode_switch_cooldown_counter += 1
+                    if not gesture_mode and gesture_mode_switch_cooldown_counter > gesture_mode_switch_cooldown:
+                        gesture_mode = True
+                        gesture_mode_switch_cooldown_counter = 0
+                else:
+                    if gesture_mode:
+                        gesture_mode_switch_cooldown_counter += 1
+                    if gesture_mode and gesture_mode_switch_cooldown_counter > gesture_mode_switch_cooldown:
+                        gesture_mode = False
+                        gesture_keypoints.clear()
+                        print("keypoints cleared!")
+                        gesture_mode_switch_cooldown_counter = 0
+
+                if gesture_mode:
+                    skel_com = np.median(coords_scaled,
+                                         axis = 0)  # yes, median, not mean. This is more robust to mispredictions!
+                    skel_com = coords_scaled[11] #itip
+                    gesture_keypoints.append(skel_com)
+                    if len(gesture_keypoints) > 2:
+                        pts = np.array(gesture_keypoints, dtype = np.int32)
+                        pts = np.flip(pts, 1)  # switch x and y coordinates for cv2's point format
+                        pts = np.expand_dims(pts, 0)  # polylines wants a 3d array
+                        cv2.polylines(prod_img, pts, isClosed = False, color = (255, 0, 0), thickness = 5)
+
+                if show_bounding_box:
+                    tools.render_bb(prod_img, (min_x - 10, min_y - 10, max_x + 10, max_y + 10), value_mean)
 
                 tools.render_skeleton(prod_img, np.stack([coords_scaled[:, 1], coords_scaled[:, 0]], axis = 1), True,
                                       np.round(values, 3))
@@ -143,8 +212,8 @@ if __name__ == '__main__':
             cv2.putText(prod_img, "{:.01f} fps".format(fps), (50, 50), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 0), 2)
             cv2.putText(prod_img, "{:.01f} fps".format(fps), (50, 50), cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 1)
 
-
             net_img = cv2.cvtColor(net_img, cv2.COLOR_RGB2BGR)
+            net_img = np.flip(net_img, 1)  # feels more natural
             cv2.imshow(win_name_net, net_img)
 
             prod_img = cv2.cvtColor(prod_img, cv2.COLOR_RGB2BGR)
@@ -157,21 +226,22 @@ if __name__ == '__main__':
                 print("do_filter: {}".format(do_filter))
             elif key == 27:
                 run = False
-            elif key == 105: #i
+            elif key == 105:  # i
                 one_euro.set_beta(one_euro.get_beta() * 10)
                 print("Beta: {}".format(one_euro.get_beta()))
-            elif key == 107: # k
+            elif key == 107:  # k
                 one_euro.set_beta(one_euro.get_beta() / 10)
                 print("Beta: {}".format(one_euro.get_beta()))
-            elif key == 106: # j
+            elif key == 106:  # j
                 one_euro.set_mincutoff(one_euro.get_mincutoff() / 10)
                 print("Min_Cutoff: {}".format(one_euro.get_mincutoff()))
-            elif key == 108: # l
+            elif key == 108:  # l
                 one_euro.set_mincutoff(one_euro.get_mincutoff() * 10)
                 print("Min_Cutoff: {}".format(one_euro.get_mincutoff()))
-            elif key == 110: # n
+            elif key == 110:  # n
                 show_net_output = not show_net_output
-
+            elif key == 98:   # b
+                show_bounding_box = not show_bounding_box
         del cam
     cv2.destroyAllWindows()
 
@@ -180,4 +250,7 @@ if __name__ == '__main__':
     print("App end!")
 
     from sys import exit
+
+
+
     exit(0)

@@ -2,3 +2,4 @@ from .model_output_display import AEOutputVisualization as AEVisuCallback, ConfM
 from .model_parts_checkpointer import ModelPartCheckpoint
 from .telegram_callback import TelegramCallback
 from .pushover_callback import PushoverCallback
+from .keypoint_logging_callback import KeypointLoggingCallback

@@ -127,12 +127,12 @@ def prepare_dataset(dataset_location, image_width, image_height):
                     m in skel_maps]
 
 
-            tfrecord_str = tfrh.make_standard_pose_record(idx,
-                                                          img,
-                                                          image_width,
-                                                          image_height,
-                                                          skel,
-                                                          skel_maps_encoded)
+            tfrecord_str = tfrh.make_standard_pose_record_with_confmaps(idx,
+                                                                        img,
+                                                                        image_width,
+                                                                        image_height,
+                                                                        skel,
+                                                                        skel_maps_encoded)
 
             # res = tfrh.parse_standard_pose_record(tfrecord_str)
             # import matplotlib.pyplot as plt

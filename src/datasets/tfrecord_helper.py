@@ -55,6 +55,20 @@ def make_standard_pose_record(idx, image, image_width, image_height, skeleton,
             'depth'       : _bytes_feature(image),
             'image_width' : _int64_feature(image_width),
             'image_height': _int64_feature(image_height),
+            'skeleton'    : _float_feature(skeleton.reshape((-1)))
+            }
+    return make_serialized_example(feature)
+
+
+def make_standard_pose_record_with_confmaps(idx, image, image_width, image_height, skeleton,
+                                            skeleton_2d):
+    skeleton = skeleton.reshape((-1))
+    assert (skeleton.shape[0] == 21 * 3)
+    feature = {
+            'index'       : _int64_feature(idx),
+            'depth'       : _bytes_feature(image),
+            'image_width' : _int64_feature(image_width),
+            'image_height': _int64_feature(image_height),
             'skeleton'    : _float_feature(skeleton.reshape((-1))),
             'skeleton_2d' : _bytes_feature(skeleton_2d)
             }
@@ -62,6 +76,19 @@ def make_standard_pose_record(idx, image, image_width, image_height, skeleton,
 
 
 def parse_standard_pose_record(serialized_record):
+    feature_description = {
+            'index'       : tf.io.FixedLenFeature([], tf.int64),
+            'depth'       : tf.io.FixedLenFeature([], tf.string),
+            'image_width' : tf.io.FixedLenFeature([], tf.int64),
+            'image_height': tf.io.FixedLenFeature([], tf.int64),
+            'skeleton'    : tf.io.FixedLenFeature([21 * 3], tf.float32)
+            }
+    parsed = tf.io.parse_single_example(serialized_record, feature_description)
+    return parsed['index'], parsed['depth'], parsed['image_width'], parsed[
+        'image_height'], parsed['skeleton']
+
+
+def parse_standard_pose_record_with_confmaps(serialized_record):
     feature_description = {
             'index'       : tf.io.FixedLenFeature([], tf.int64),
             'depth'       : tf.io.FixedLenFeature([], tf.string),
@@ -75,12 +102,17 @@ def parse_standard_pose_record(serialized_record):
         'image_height'], parsed['skeleton'], parsed['skeleton_2d']
 
 
-def decode_img(index, depth, img_width, img_height, skeleton, conf_maps):
+def decode_img_with_confmaps(index, depth, img_width, img_height, skeleton, conf_maps):
     img = tf.image.decode_png(depth, channels = 1, dtype = tf.uint16)
     return index, img, img_width, img_height, skeleton, conf_maps
 
 
-def depth_and_skel(index, depth, img_width, img_height, skeleton, conf_maps):
+def decode_img(index, depth, img_width, img_height, skeleton):
+    img = tf.image.decode_png(depth, channels = 1, dtype = tf.uint16)
+    return index, img, img_width, img_height, skeleton
+
+
+def depth_and_skel(index, depth, img_width, img_height, skeleton):
     return depth, skeleton
 
 
@@ -103,6 +135,11 @@ def decode_confmaps(conf_maps):
 
     all_maps = tf.transpose(images.stack(), [1, 2, 0])
     return all_maps
+
+
+def open_tf_record_with_confmaps(filename):
+    tfrecord = tf.data.TFRecordDataset(filename)
+    return tfrecord.map(parse_standard_pose_record_with_confmaps)
 
 
 def open_tf_record(filename):

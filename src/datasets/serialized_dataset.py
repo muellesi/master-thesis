@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import tensorflow as tf
-from .tfrecord_helper import open_tf_record, decode_img
+from .tfrecord_helper import  open_tf_record, decode_img, open_tf_record_with_confmaps, decode_img_with_confmaps
 from .data_downloader import download_data
 from google_drive_downloader import GoogleDriveDownloader as gdd
 
@@ -31,6 +31,8 @@ class SerializedDataset:
         self.int_f_x = config["depth_intrinsics"]["f_x"]
         self.int_f_y = config["depth_intrinsics"]["f_y"]
 
+        self.has_confmaps = config["has_confmaps"]
+
         self.camera_intrinsics = np.array([
                 [self.int_f_x, 0.0, self.int_pp_x],
                 [0.0, self.int_f_y, self.int_pp_y],
@@ -44,10 +46,19 @@ class SerializedDataset:
 
     def get_data(self, subset, cache = False):
         ds = tf.data.Dataset.list_files(os.path.join(self.data_root, subset + "*.tfrecord"))
-        ds = ds.interleave(open_tf_record, cycle_length = 8, block_length = 1)
-        if cache:
-            ds = ds.cache()
-        ds = ds.map(decode_img, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
+        if self.has_confmaps:
+            ds = ds.interleave(open_tf_record_with_confmaps, cycle_length = 8, block_length = 1)
+            if cache:
+                ds = ds.cache()
+            ds = ds.map(decode_img_with_confmaps, num_parallel_calls = tf.data.experimental.AUTOTUNE)
+
+        else:
+            ds = ds.interleave(open_tf_record, cycle_length = 8, block_length = 1)
+            if cache:
+                ds = ds.cache()
+            ds = ds.map(decode_img, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
         return ds
 
     def __str__(self):

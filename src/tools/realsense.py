@@ -117,7 +117,7 @@ class RealsenseCamera:
         #depth_frame = self.filter_decimate.process(depth_frame_raw)
         depth_frame = self.depth_to_disparity.process(depth_frame)
         depth_frame = self.filter_spatial.process(depth_frame)
-        depth_frame = self.filter_temporal.process(depth_frame)
+        #depth_frame = self.filter_temporal.process(depth_frame)
         depth_frame = self.disparity_to_depth.process(depth_frame)
 
         self.depth_intrinsics = rs.video_stream_profile(depth_frame.profile).get_intrinsics()

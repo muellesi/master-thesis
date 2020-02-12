@@ -138,12 +138,16 @@ def gaussian_smooth(image, radius):
     Smooths an image with dimensions [h, w, c]
     """
     gauss_kernel = gaussian_kernel(3 * radius, 0, radius)
-    e = tf.eye(image.shape[2], image.shape[2], batch_shape = [gauss_kernel.shape[0], gauss_kernel.shape[1]])
+
+    img_shape = tf.shape(image)
+    kernel_shape = tf.shape(gauss_kernel)
+
+    e = tf.eye(img_shape[2], img_shape[2], batch_shape = [kernel_shape[0], kernel_shape[1]])
     e = tf.transpose(e, [2, 3, 0, 1])
     gauss_kernel_layered = e * gauss_kernel
     gauss_kernel_layered = tf.transpose(gauss_kernel_layered, [2, 3, 0, 1])
 
-    img = tf.cast(image, dtype=tf.float32)
+    img = tf.cast(image, dtype = tf.float32)
     img_batched = img[tf.newaxis, :, :, :]
 
     res = tf.squeeze(tf.nn.conv2d(img_batched, gauss_kernel_layered, strides = [1, 1, 1, 1], padding = "SAME"))
@@ -197,36 +201,49 @@ def np_augment_zoom(pooled_images):
     return pooled_images
 
 
-@tf.function
-def augment_depth_and_confmaps(depth, conf_maps, augmentation_probability = 0.1):
-    num_conf_maps = tf.shape(conf_maps)[2]
-
-    pool = tf.concat([depth, conf_maps], axis = 2,
-                     name = 'ConcatBeforeAugment')
-
+def np_augment(images):
     augmentations = {
             np_augment_shift : 30,
-            np_augment_rotate: 30,
+            np_augment_rotate: 60,
             np_augment_shear : 10,
             np_augment_zoom  : 10
             }
+    transform_result = images
+    for augmentation, prob in augmentations.items():
+        rand = np.random.randint(0, 100)
+        if rand <= prob:
+            transform_result = augmentation(transform_result)
+    return transform_result
 
-    rand = tf.random.uniform(shape = [], minval = 0, maxval = 100,
-                             dtype = tf.int32)
-    if rand <= tf.constant(int(augmentation_probability * 100), dtype = tf.int32):
-        for augmentation, prob in augmentations.items():
-            rand = tf.random.uniform(shape = [], minval = 0, maxval = 100,
-                                     dtype = tf.int32)
-            if rand <= prob:
-                transform_result = tf.numpy_function(augmentation, [pool],
-                                                     Tout = tf.dtypes.float32,
-                                                     name =
-                                                     augmentation.__name__)
-                pool = tf.ensure_shape(transform_result, pool.shape,
-                                       name = 'EnsureShapeAfterAugment')
 
-    result_depth, result_conf_maps = tf.split(pool,
-                                              [1, num_conf_maps], axis = 2,
-                                              name = 'SplitAfterAugment')
+@tf.function
+def augment_depth_and_confmaps(depth, conf_maps, augmentation_probability = 0.6):
+    rand = tf.random.uniform([], 0, 100, dtype = tf.int32)
+    if rand < tf.constant(int(augmentation_probability * 100), dtype = tf.int32):
+        num_conf_maps = tf.shape(conf_maps)[2]
+        pool = tf.concat([depth, conf_maps], axis = 2, name = 'ConcatBeforeAugment')
 
-    return result_depth, result_conf_maps
+        transform_result = tf.numpy_function(np_augment, [pool], Tout = tf.float32)
+        pool = tf.ensure_shape(transform_result, pool.shape, name = 'EnsureShapeAfterAugment')
+
+        result_depth, result_conf_maps = tf.split(pool,
+                                                  [1, num_conf_maps], axis = 2,
+                                                  name = 'SplitAfterAugment')
+
+        # randomly smooth conf maps for larger spread
+        # with tf.device('/GPU:0'):
+            # rand2 = tf.random.uniform([], 0, 99, dtype = tf.int32)
+            # if rand2 < tf.constant(100, dtype = tf.int32):
+            #    shape_before = result_conf_maps.shape
+            #    result_conf_maps = gaussian_smooth(result_conf_maps, tf.random.uniform([], 0.5, 7, dtype = tf.float32))
+            #    result_conf_maps = tf.ensure_shape(result_conf_maps, shape_before, name = 'EnsureShapeAfterAugment')
+
+        depth = result_depth
+        conf_maps = result_conf_maps
+
+    with tf.device('/GPU:0'):
+        shape_before = conf_maps.shape
+        result_conf_maps = gaussian_smooth(conf_maps, tf.constant(5.0, dtype = tf.float32))
+        result_conf_maps = tf.ensure_shape(result_conf_maps, shape_before, name = 'EnsureShapeAfterAugment')
+
+    return depth, result_conf_maps

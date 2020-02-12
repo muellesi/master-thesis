@@ -146,12 +146,12 @@ def prepare_dataset(dataset_location, image_width, image_height):
                         cv2.imencode(".png", m[:, :, np.newaxis])[1].tostring() for
                         m in skel_maps]
 
-                tfrecord_str = tfrh.make_standard_pose_record(sample_idx,
-                                                              img,
-                                                              image_width,
-                                                              image_height,
-                                                              skeleton,
-                                                              skel_maps_encoded)
+                tfrecord_str = tfrh.make_standard_pose_record_with_confmaps(sample_idx,
+                                                                            img,
+                                                                            image_width,
+                                                                            image_height,
+                                                                            skeleton,
+                                                                            skel_maps_encoded)
 
                 record_writer.write(tfrecord_str)
                 sample_idx += 1
@@ -168,7 +168,7 @@ def __decode_img(index, depth, img_width, img_height, skeleton):
 @tf.function
 def __open_tf_record(filename):
     tfrecord = tf.data.TFRecordDataset(filename)
-    return tfrecord.map(tfrh.parse_standard_pose_record)
+    return tfrecord.map(tfrh.parse_standard_pose_record_with_confmaps)
 
 
 if __name__ == "__main__":

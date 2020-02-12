@@ -22,7 +22,6 @@ class TelegramCallback(tf.keras.callbacks.Callback):
         self.training_id = training_id
         self.chat_id = chat_id
 
-
     def _send_message(self, message):
         message_title = "Training {} on #{}".format("" if self.training_id is None else "#" + str(self.training_id),
                                                     self.hostname)
@@ -33,6 +32,7 @@ class TelegramCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs):
         message = "Epoch: {} ; \n Metrics: {}".format(epoch,
                                                       pprint.pformat(logs))
+
         self._send_message(message)
 
 
