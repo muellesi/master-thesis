@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     model = tf.keras.models.load_model(
             'E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d'
-            '\\weiter_trainiert\\checkpoints\\pose_est_refined.hdf5', compile = False)
+            '\\noch_weiter_trainiert\\checkpoints\\pose_est_refined.hdf5', compile = False)
 
     win_name_net = 'net'
     win_name_net_prod = 'prod'
@@ -78,7 +78,6 @@ if __name__ == '__main__':
             cv2.imshow(win_name_net, img2)
             cv2.waitKey(33)
     else:
-        lpf = refiners.LowpassRefiner(2, 30, max_sample_history = 300)
         one_euro = refiners.OneEuroFilter(freq = 30, mincutoff = 1.0, beta = 0.01)
 
         do_filter = True
@@ -132,7 +131,7 @@ if __name__ == '__main__':
 
             # print("Norm: {}, Max: {}, Min: {}".format(value_norm, value_max, value_min))
 
-            complete_map = np.sum(res, axis = 2)
+            complete_map = np.max(res, axis = 2)
 
             net_img = depth.squeeze()
             if show_net_output:
@@ -140,7 +139,12 @@ if __name__ == '__main__':
             net_img = tools.colorize_cv(net_img)
 
             depth_raw = depth_raw.clip(min = None, max = 800)
-            prod_img = tools.colorize_cv(depth_raw.squeeze())
+
+            #prod_img = rgb
+            if depth_raw.shape != (480, 640):
+                depth_raw = cv2.resize(depth_raw.squeeze(), (640, 480))
+
+            prod_img = tools.colorize_cv(depth_raw)
 
             prod_img = np.flip(prod_img, 1)  # feels more natural
             prod_img = np.ascontiguousarray(prod_img)
@@ -161,17 +165,12 @@ if __name__ == '__main__':
                 tip_idxs = [8, 11, 14, 17, 20]
                 w_dists = np.linalg.norm(coords_scaled - coords_scaled[w_idx], axis = 1)
                 w_tip_dists = w_dists[tip_idxs]
+                tip_mcp_dists = np.abs([w_tip_dists[i] - w_dists[i + 1] for i in range(5)])
 
                 gesture_cond = True
                 #gesture_cond = np.mean(w_tip_dists[[0, 1]]) > 2 * np.median(w_tip_dists[[0, 1, 2, 3, 4]], axis = 0)
-                gesture_cond = gesture_cond and w_tip_dists[0] > 1.2 * w_dists[7]
-                gesture_cond = gesture_cond or w_tip_dists[1] > 1.2 * w_dists[9]
-                #gesture_cond = gesture_cond or w_tip_dists[0] > 1.2 * w_dists[7]  # thumb is stretched
-                #gesture_cond = gesture_cond or w_tip_dists[1] > 1.2 * w_dists[9]  # index finger is stretched
-                #gesture_cond = gesture_cond or w_tip_dists[2] > 1.2 * w_dists[11]  # index finger is stretched
-                #gesture_cond = gesture_cond or w_tip_dists[3] > 1.2 * w_dists[13]  # index finger is stretched
-                #gesture_cond = gesture_cond or w_tip_dists[4] > 1.2 * w_dists[15]  # index finger is stretched
-
+                #gesture_cond = gesture_cond and w_tip_dists[0] > 1.2 * w_dists[7]
+                gesture_cond = gesture_cond and tip_mcp_dists[1] > np.mean(tip_mcp_dists[[0,2,3,4]])
                 #gesture_cond = gesture_cond and (angle_between_keypoints(coords_scaled[8], coords_scaled[0], coords_scaled[11]) > np.pi / 6)
 
                 if gesture_cond:

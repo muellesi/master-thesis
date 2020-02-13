@@ -26,7 +26,8 @@ last_frame_time = None
 last_frame_depth = None
 last_frame_rgb = None
 
-pose_model_path = 'E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d\\weiter_trainiert\\checkpoints\\cp_2d_pose_epoch_refine_.43.hdf5'
+#pose_model_path = 'E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d\\weiter_trainiert\\checkpoints\\cp_2d_pose_epoch_refine_.43.hdf5'
+pose_model_path = 'E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d\\noch_weiter_trainiert\\checkpoints\\pose_est_refined.hdf5'
 camera_settings_file = 'E:\\Google Drive\\UNI\\Master\\Thesis\\ThesisCode\\src\\realsense_settings.json'
 gesture_sample_length = 90
 norm_limit = 1.2
@@ -47,12 +48,12 @@ def cv_from_frame(frame, model):
     depth = cv2.resize(frame, (224, 224))
 
     depth = tf.cast(depth, dtype = tf.float32)
-    thresh = tf.constant(150, dtype = tf.float32)
+    thresh = tf.constant(105, dtype = tf.float32)
     mask = tf.greater(depth, thresh)
     non_zero_depth = tf.boolean_mask(depth, mask)
     closest_distance = tf.reduce_min(non_zero_depth)
 
-    upper_mask = tf.where(tf.less_equal(depth, closest_distance + 500.0), tf.ones_like(depth), tf.zeros_like(depth))
+    upper_mask = tf.where(tf.less_equal(depth, closest_distance + 400.0), tf.ones_like(depth), tf.zeros_like(depth))
     depth = depth * upper_mask
 
     depth_clipped = datasets.util.scale_clip_image_data(depth, 1.0 / 1500.0)
@@ -126,9 +127,17 @@ def record_sample(model):
         coords = one_euro(coords, (datetime.now() - global_start_time).total_seconds())
         sample_frames.appendleft(coords)
 
+        if depth_raw.shape != (480, 640):
+            depth_raw = cv2.resize(depth_raw, (640, 480))
+
+        depth_raw = np.flip(depth_raw, 1)  # feels more natural
+        coords_display = np.copy(coords)
+        coords_display[:, 1] = 224.0 - coords_display[:, 1]
+
         prod_img = tools.colorize_cv(depth_raw.squeeze())
+
         if value_norm > 0.7:
-            coords_scaled = coords * np.array([480 / 224, 640 / 224])
+            coords_scaled = coords_display * np.array([480 / 224, 640 / 224])
             tools.render_skeleton(prod_img, np.stack([coords_scaled[:, 1], coords_scaled[:, 0]], axis = 1), True,
                                   np.round(values, 3))
 
@@ -146,15 +155,17 @@ def record_sample(model):
 
 def element_diff(samples):
     if len(samples.shape) == 3:
-        return np.diff(samples, axis = 0, append = [samples[-1, :]])
+        return np.diff(samples, axis = 0, append = 0)
     elif len(samples.shape) == 2:
-        return np.diff(samples, axis = 1, append = [samples[-1, :]])
+        return np.diff(samples, axis = 1, append = 0)
     else:
         raise NotImplementedError()
 
 def wrist_relative(samples):
     if len(samples.shape) == 3:
-        return samples - samples[:, 0][:, np.newaxis, :]
+        res = samples - samples[:, 0][:, np.newaxis, :]
+
+        return res
     elif len(samples.shape) == 2:
         return samples - samples[0]
     else:
@@ -167,9 +178,10 @@ def run_app(model, action_manager, gesture_data):
     time, depth_raw, rgb = cam.get_frame()  # camera warm up
     coords, vals = cv_from_frame(depth_raw, model)
 
-    gesture_classifier = KNNClassifier(k = 3,
+    gesture_classifier = KNNClassifier(k = 2,
                                        batch_size = gesture_sample_length,
-                                       sample_shape = coords.size
+                                       sample_shape = coords.size,
+                                       metric = 'manhattan'
                                        )
     X = []
     Y = []
@@ -230,8 +242,8 @@ def run_app(model, action_manager, gesture_data):
             gesture_classifier.reset_queue()
 
             # debounce
-            if ((datetime.now() - last_action_time).total_seconds() > 0.3) or \
-                    ((datetime.now() - last_action_time).total_seconds() > 0.01 and not (last_gesture == gesture)):
+            if ((datetime.now() - last_action_time).total_seconds() > 1) or \
+                    ((datetime.now() - last_action_time).total_seconds() > 0.5 and not (last_gesture == gesture)):
                 last_gesture = gesture
                 last_action_time = datetime.now()
                 action_manager.exec_action(gesture.action)
@@ -249,11 +261,18 @@ def run_app(model, action_manager, gesture_data):
             display_results = not display_results
 
         if display_results:
+            if depth_raw.shape != (480, 640):
+                depth_raw = cv2.resize(depth_raw, (640, 480))
+
+            depth_raw = np.flip(depth_raw, 1)  # feels more natural
+            coords_display = np.copy(coords)
+            coords_display[:,1] = 224.0 - coords_display[:, 1]
+
             result_img = tools.colorize_cv(depth_raw.squeeze())
 
             # Skeleton
             if value_norm > norm_limit:
-                coords_scaled = coords * np.array([480 / 224, 640 / 224])
+                coords_scaled = coords_display * np.array([480 / 224, 640 / 224])
                 tools.render_skeleton(result_img, np.stack([coords_scaled[:, 1], coords_scaled[:, 0]], axis = 1), True,
                                       np.round(vals, 2))
 

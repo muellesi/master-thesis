@@ -66,7 +66,7 @@ class RealsenseCamera:
 
         # Processing blocks
         self.filter_decimate = rs.decimation_filter()
-        self.filter_decimate.set_option(rs.option.filter_magnitude, 2 ** 0)
+        self.filter_decimate.set_option(rs.option.filter_magnitude, 2 ** 1)
         self.filter_spatial = rs.spatial_filter(0.5, 20.0, 2.0, 0)
         self.filter_temporal = rs.temporal_filter(0.4, 20, 1)
         self.depth_to_disparity = rs.disparity_transform(True)
@@ -114,7 +114,7 @@ class RealsenseCamera:
         depth_frame = frames.get_depth_frame()
         color_frame = frames.get_color_frame()
 
-        #depth_frame = self.filter_decimate.process(depth_frame_raw)
+        depth_frame = self.filter_decimate.process(depth_frame)
         depth_frame = self.depth_to_disparity.process(depth_frame)
         depth_frame = self.filter_spatial.process(depth_frame)
         #depth_frame = self.filter_temporal.process(depth_frame)

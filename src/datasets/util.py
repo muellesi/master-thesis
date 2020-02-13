@@ -156,8 +156,8 @@ def gaussian_smooth(image, radius):
 
 def np_augment_shift(pooled_images):
     pooled_images = tf.keras.preprocessing.image.random_shift(pooled_images,
-                                                              wrg = 0.2,
-                                                              hrg = 0.2,
+                                                              wrg = 0.1,
+                                                              hrg = 0.1,
                                                               row_axis = 0,
                                                               col_axis = 1,
                                                               channel_axis = 2,
@@ -191,8 +191,8 @@ def np_augment_rotate(pooled_images):
 def np_augment_zoom(pooled_images):
     pooled_images = tf.keras.preprocessing.image.random_zoom(pooled_images,
                                                              zoom_range = (
-                                                                     1.25,
-                                                                     1.25),
+                                                                     1.05,
+                                                                     1.05),
                                                              row_axis = 0,
                                                              col_axis = 1,
                                                              channel_axis = 2,
@@ -244,6 +244,6 @@ def augment_depth_and_confmaps(depth, conf_maps, augmentation_probability = 0.6)
     with tf.device('/GPU:0'):
         shape_before = conf_maps.shape
         result_conf_maps = gaussian_smooth(conf_maps, tf.constant(5.0, dtype = tf.float32))
-        result_conf_maps = tf.ensure_shape(result_conf_maps, shape_before, name = 'EnsureShapeAfterAugment')
+    result_conf_maps = tf.ensure_shape(result_conf_maps, shape_before, name = 'EnsureShapeAfterAugment')
 
     return depth, result_conf_maps

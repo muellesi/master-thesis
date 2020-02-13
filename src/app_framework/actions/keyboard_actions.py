@@ -28,7 +28,7 @@ class KeyboardRightArrow(GestureAction):
 
 
     def call(self):
-        self.keyboard.press(Key.left)
+        self.keyboard.press(Key.right)
 
 
     def get_name(self):

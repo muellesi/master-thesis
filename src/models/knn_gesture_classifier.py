@@ -8,7 +8,7 @@ from sklearn.neighbors import KNeighborsClassifier
 
 class KNNClassifier():
 
-    def __init__(self, k, batch_size, sample_shape):
+    def __init__(self, k, batch_size, sample_shape, metric = None):
         self.k = k
         self.batch_size = batch_size
 
@@ -18,7 +18,8 @@ class KNNClassifier():
 
         self.sample_shape = sample_shape
 
-        self.knn = KNeighborsClassifier(n_neighbors = 3)
+        self.metric = metric
+        self.knn = None
 
         self.current_data_frame = deque(maxlen = batch_size)
         for i in range(self.batch_size):
@@ -50,21 +51,35 @@ class KNNClassifier():
 
 
     def predict(self):
+        assert self.knn is not None, "Please add training data before trying to predict!"
         return self.knn.predict([np.stack(self.current_data_frame).reshape(-1)])
 
 
     def kneighors_graph(self):
+        assert self.knn is not None, "Please add training data before trying to predict kneighors_graph!"
         return self.knn.kneighbors_graph([np.stack(self.current_data_frame).reshape(-1)], mode = 'distance')
 
 
     def predict_proba(self):
+        assert self.knn is not None, "Please add training data before trying to predict_proba!"
         return zip(self.train_data_labels, self.knn.predict_proba([np.stack(self.current_data_frame).reshape(-1)]))
 
 
     def __fit(self):
+        if self.knn is not None:
+            del self.knn
+
+        add_settings = { }
+
+        if self.metric is not None:
+            add_settings["metric"] = self.metric
+
+        self.knn = KNeighborsClassifier(n_neighbors = 3, **add_settings)
+
         self.knn.fit(self.train_data, self.train_data_labels)
 
 
     def reset_queue(self):
         for i in range(self.batch_size):
             self.current_data_frame.append(np.zeros(self.sample_shape))
+            print("gesture classifier queue reset!")

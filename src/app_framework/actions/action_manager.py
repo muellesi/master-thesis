@@ -32,9 +32,23 @@ class ActionManager:
                 MediaVolumeDown(),
                 MediaVolumeMute(),
                 MediaVolumeUp(),
-                TTSAction(),
+                TTSAction("Hello World!"),
                 TTSAction("Stop! It's hammer time!"),
-                TTSAction("Lorem ipsum dolor sit amet")
+                TTSAction("Lorem ipsum dolor sit amet"),
+                TTSAction("1"),
+                TTSAction("2"),
+                TTSAction("3"),
+                TTSAction("4"),
+                TTSAction("5"),
+                TTSAction("6"),
+                TTSAction("7"),
+                TTSAction("8"),
+                TTSAction("9"),
+                TTSAction("10"),
+                TTSAction("Herzlich willkommen zu meiner Abschlusspräsentation!"),
+                TTSAction("Folie weiter"),
+                TTSAction("Folie zurück"),
+                TTSAction("Vielen Dank für die Aufmerksamkeit! Gerne könnt ihr mir jetzt noch Fragen stellen!")
                 ]
 
         self._actions = { }

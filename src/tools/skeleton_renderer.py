@@ -91,7 +91,7 @@ def __draw2dseg_cv(img, joints, idx1, idx2, c='r', alpha=1):
             'c': (0, 255, 255),
             'g': (0, 240, 0)
             }
-    img = cv2.line(img, tuple(joints[idx1].astype(np.int)), tuple(joints[idx2].astype(np.int)), cmap[c])
+    img = cv2.line(img, tuple(joints[idx1].astype(np.int)), tuple(joints[idx2].astype(np.int)), cmap[c], thickness = 2)
     return img
 
 
@@ -101,7 +101,13 @@ def __draw2djoints_cv(img, joints, links, alpha=1):
     https://github.com/guiggh/hand_pose_action/blob/master/load_example.py#L66
     """
     colors = ['r', 'm', 'b', 'c', 'g']
-
+    cmap = {
+            'r': (255, 0, 0),
+            'm': (255, 0, 255),
+            'b': (0, 0, 240),
+            'c': (0, 255, 255),
+            'g': (0, 240, 0)
+            }
     for finger_idx, finger_links in enumerate(links):
         for idx in range(len(finger_links) - 1):
             img = __draw2dseg_cv(
@@ -111,6 +117,8 @@ def __draw2djoints_cv(img, joints, links, alpha=1):
                     finger_links[idx + 1],
                     c=colors[finger_idx],
                     alpha=alpha)
+            img = cv2.circle(img, tuple(joints[finger_links[idx + 1]].astype(np.int)), 2, cmap[colors[finger_idx]], 4)
+
     return img
 
 

@@ -1,6 +1,7 @@
 import json
 import os
 
+import numpy as np
 import tensorflow as tf
 
 import datasets.util
@@ -8,7 +9,6 @@ import tools
 import tools.training_callbacks
 from datasets import SerializedDataset
 from datasets.tfrecord_helper import decode_confmaps
-from datasets.tfrecord_helper import depth_and_confmaps
 from models import models
 
 
@@ -32,13 +32,67 @@ empty_background_path = 'E:\\MasterDaten\\Datasets\\StructuralLearning' \
                         '\\augmentation\\**\\*.png'
 
 
-def prepare_ds(name, ds, add_noise, add_empty, augment):
-    ds = ds.map(depth_and_confmaps,
+def crop_image(img, skel, intr):
+    CUBE_OFFSET = 100  # mm
+
+
+    def inner_np(depth, skeleton, intr):
+        skeleton = np.reshape(skeleton, [21, 3])
+        max3d = np.max(skeleton, axis = 0)
+        min3d = np.min(skeleton, axis = 0)
+
+        max_z = max3d[2]
+        min_z = min3d[2]
+
+        cube = np.array(
+                [
+                        [min3d[0] - CUBE_OFFSET, min3d[1] - CUBE_OFFSET, min3d[2] - CUBE_OFFSET],  # front top left
+                        [max3d[0] + CUBE_OFFSET, min3d[1] - CUBE_OFFSET, min3d[2] - CUBE_OFFSET],  # front top right
+                        [max3d[0] + CUBE_OFFSET, max3d[1] + CUBE_OFFSET, min3d[2] - CUBE_OFFSET],  # front bottom right
+                        [min3d[0] - CUBE_OFFSET, max3d[1] + CUBE_OFFSET, min3d[2] - CUBE_OFFSET],  # front bottom left
+
+                        [min3d[0] - CUBE_OFFSET, min3d[1] - CUBE_OFFSET, max3d[2] + CUBE_OFFSET],  # back top left
+                        [max3d[0] + CUBE_OFFSET, min3d[1] - CUBE_OFFSET, max3d[2] + CUBE_OFFSET],  # back top right
+                        [max3d[0] + CUBE_OFFSET, max3d[1] + CUBE_OFFSET, max3d[2] + CUBE_OFFSET],  # back bottom right
+                        [min3d[0] - CUBE_OFFSET, max3d[1] + CUBE_OFFSET, max3d[2] + CUBE_OFFSET],  # back bottom right
+                        ]
+                )
+
+        cube_hom2d = intr.dot(cube.transpose()).transpose()
+        cube2d = (cube_hom2d / cube_hom2d[:, 2:])[:, :2]
+
+        max2d = tf.reduce_max(cube2d, axis = 0)
+        min2d = tf.reduce_min(cube2d, axis = 0)
+
+        maxx = int(min(net_input_width, max(0, max2d[0])))
+        minx = int(min(net_input_width, max(0, min2d[0])))
+        maxy = int(min(net_input_height, max(0, max2d[1])))
+        miny = int(min(net_input_height, max(0, min2d[1])))
+
+        masked = np.zeros_like(depth, dtype = np.float32)
+        masked[miny:maxy, minx:maxx, :] = depth[miny:maxy, minx:maxx, :]
+
+        maxz = max_z + CUBE_OFFSET
+        minz = min_z - CUBE_OFFSET
+
+        z_lim = np.logical_or(masked > maxz, masked < minz)
+        masked[z_lim] = 0.0
+
+        return masked
+
+
+    res = tf.numpy_function(inner_np, (img, skel, intr), Tout = tf.float32)
+    res = tf.ensure_shape(res, [int(net_input_height), int(net_input_width), 1])
+    return res
+
+
+def prepare_ds(name, ds, cam_intr, add_noise, add_empty, augment):
+    ds = ds.map(lambda index, depth, img_width, img_height, skeleton, conf_maps:
+                (crop_image(depth, skeleton, cam_intr), conf_maps),
                 num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
     ds = ds.map(lambda img, confm: (img, decode_confmaps(confm)),
                 num_parallel_calls = tf.data.experimental.AUTOTUNE)
-    
 
     ds = ds.map(lambda img, confm:
                 (datasets.util.scale_clip_image_data(img, 1.0 / 1500.0),
@@ -62,8 +116,8 @@ def prepare_ds(name, ds, add_noise, add_empty, augment):
 
     if augment:
         ds = ds.map(
-            lambda img, confm: datasets.util.augment_depth_and_confmaps(img, confm, augmentation_probability = 0.6),
-            num_parallel_calls = tf.data.experimental.AUTOTUNE)
+                lambda img, confm: datasets.util.augment_depth_and_confmaps(img, confm, augmentation_probability = 0.6),
+                num_parallel_calls = tf.data.experimental.AUTOTUNE)
 
         ds = ds.map(lambda img, confm: (img,
                                         confm *
@@ -72,7 +126,7 @@ def prepare_ds(name, ds, add_noise, add_empty, augment):
                                                             dtype =
                                                             tf.dtypes.float32),
                                                 tf.reduce_max(confm)))),
-                    num_parallel_calls = tf.data.experimental.AUTOTUNE) # restore confmap density after blurring
+                    num_parallel_calls = tf.data.experimental.AUTOTUNE)  # restore confmap density after blurring
 
     if add_empty:
         ds_empty_imgs = datasets.util.make_img_ds_from_glob(
@@ -113,6 +167,18 @@ def make_skewed_mse(asymmetry_factor):
     return acost
 
 
+def make_keypoint_metric(index, name):
+    def keypoint(y_true, y_pred):
+        dist = batched_twod_argmax(y_true) - batched_twod_argmax(y_pred)
+        dist = tf.norm(dist, axis = 2)
+        mean_dists = tf.reduce_mean(dist, axis = 0)
+        return mean_dists[index]
+
+
+    keypoint.__name__ = 'kp_error_{}'.format(name)
+    return keypoint
+
+
 def train_pose_estimator(train_data, validation_data, test_data,
                          saved_model = None, skip_pretraining = False):
     tools.clean_tensorboard_logs(tensorboard_dir)
@@ -137,6 +203,8 @@ def train_pose_estimator(train_data, validation_data, test_data,
             plot_every_x_batches = 2000,
             confmap_labels = ds_provider.joint_names
             )
+
+    metrics = [make_keypoint_metric(idx, name) for idx, name in enumerate(ds_provider.joint_names)]
 
     telegram_callback = tools.training_callbacks.TelegramCallback(telegram_user, telegram_token, telegram_chat,
                                                                   "SingleTrainingRun")
@@ -165,7 +233,7 @@ def train_pose_estimator(train_data, validation_data, test_data,
                 cp_name = checkpoint_prefix,
                 loss = make_skewed_mse(-0.5),
                 verbose = 1,
-                add_metrics = [keypoint_error_metric],
+                add_metrics = metrics,
                 custom_callbacks = [visu, telegram_callback],
                 lr_reduce_patience = 2,
                 early_stop_patience = 5
@@ -220,14 +288,15 @@ def train_pose_estimator(train_data, validation_data, test_data,
             train_data = train_data,
             validation_data = validation_data,
             max_epochs = max_epochs,
-            learning_rate = learning_rate / 100,
+            learning_rate = learning_rate,
             tensorboard_dir = tensorboard_dir,
             checkpoint_dir = checkpoint_dir,
-            save_best_cp_only = True,
+            save_best_cp_only = False,
             cp_name = checkpoint_prefix + "_refine_",
+            cp_save_freq = 10000,
             loss = make_skewed_mse(-0.5),
             verbose = 1,
-            add_metrics = [keypoint_error_metric],
+            add_metrics = metrics,
             custom_callbacks = [visu, telegram_callback]
             )
 
@@ -266,8 +335,9 @@ if __name__ == '__main__':
     ds_train = ds_provider.get_data("train")
     ds_train = prepare_ds('train',
                           ds_train,
+                          cam_intr = ds_provider.camera_intrinsics,
                           add_noise = True,
-                          add_empty = True,
+                          add_empty = False,
                           augment = True)
     ds_train = datasets.util.batch_shuffle_prefetch(ds_train,
                                                     batch_size = batch_size)
@@ -275,6 +345,7 @@ if __name__ == '__main__':
     ds_val = ds_provider.get_data("validation")
     ds_val = prepare_ds('validation',
                         ds_val,
+                        cam_intr = ds_provider.camera_intrinsics,
                         add_noise = False,
                         add_empty = False,
                         augment = False)
@@ -283,6 +354,7 @@ if __name__ == '__main__':
     ds_test = ds_provider.get_data("test")
     ds_test = prepare_ds('test',
                          ds_test,
+                         cam_intr = ds_provider.camera_intrinsics,
                          add_noise = False,
                          add_empty = False,
                          augment = False)
@@ -311,9 +383,23 @@ if __name__ == '__main__':
     #     fig.show()
     # quit()
 
-    train_pose_estimator(ds_train,
-                         ds_val,
-                         ds_test,
-                         skip_pretraining = True,
-                         saved_model = "E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d\\ueber_weihnachten\\pose_est_refined.hdf5"
-                         )
+    import glob
+
+    checkpoint_files = glob.glob(os.path.join(checkpoint_dir, "*.hdf5"))
+
+    if len(checkpoint_files) > 0:
+        latest_file = max(checkpoint_files, key = os.path.getctime)
+        print("Trying to use checkpoint {}!".format(latest_file))
+        train_pose_estimator(ds_train,
+                             ds_val,
+                             ds_test,
+                             saved_model = latest_file,
+                             skip_pretraining = ("refine" in latest_file)
+                             )
+    else:
+        train_pose_estimator(ds_train,
+                             ds_val,
+                             ds_test,
+                             skip_pretraining = True,
+                             saved_model = "E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d\\ueber_weihnachten\\pose_est_refined.hdf5"
+                             )
