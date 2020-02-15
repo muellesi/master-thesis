@@ -218,8 +218,8 @@
     "depth_width": 640,
     "depth_height": 480,
     "depth_intrinsics": {
-      "pp_x": 320,
-      "pp_y": 240,
+      "pp_x": 160,
+      "pp_y": 120,
       "f_x": 241.42,
       "f_y": 241.42
     },

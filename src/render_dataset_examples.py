@@ -69,7 +69,10 @@ if __name__ == "__main__":
             depth = np.squeeze(depth)
 
             skel = np.array(skel).reshape((-1, 3))
+
             skel = tools.project_2d(skel, ds_provider.camera_intrinsics)
+            if key == 'MSRA':
+                skel = skel * 2.0
 
             depth_colored_viridis = tools.colorize_cv(copy.copy(depth), cmap = "viridis")
             depth_colored_bone = tools.colorize_cv(copy.copy(depth), cmap = 'bone')
