@@ -30,11 +30,13 @@ last_frame_rgb = None
 pose_model_path = 'E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d\\noch_weiter_trainiert\\checkpoints\\pose_est_refined.hdf5'
 camera_settings_file = 'E:\\Google Drive\\UNI\\Master\\Thesis\\ThesisCode\\src\\realsense_settings.json'
 gesture_sample_length = 90
-norm_limit = 1.2
+hand_detection_limit = 0.6
 
 filter_param_mincutoff = 1.0
 filter_param_beta = 0.01
 filter_param_freq = 30
+
+use_colormap = 'bone'
 
 def twod_argmax(val):
     maxy = tf.argmax(tf.reduce_max(val, axis = 2), 1)
@@ -44,17 +46,37 @@ def twod_argmax(val):
     return maxs
 
 
+def get_closest_nonzero(depthmap, non_zero_thresh, erode_kernel = None):
+    if erode_kernel is None:
+        erode_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    non_zero_depth = np.where(np.greater(depthmap, non_zero_thresh), np.ones_like(depthmap),
+                              np.zeros_like(depthmap))
+    non_zero_mask = cv2.erode(non_zero_depth, erode_kernel, iterations = 1)
+
+    non_zero_mask = np.where(np.greater(non_zero_mask, 0))
+    closest_distance = np.min(depthmap[non_zero_mask])
+    return closest_distance
+
+
+def mask_depth_farther_than(depthmap, thresh, open_kernel = None):
+    if open_kernel is None:
+        open_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+
+    upper_mask = np.where(np.less_equal(depthmap, thresh + 200.0), np.ones_like(depthmap),
+                          np.zeros_like(depthmap))
+    upper_mask = cv2.medianBlur(upper_mask, 3)
+
+    upper_mask = cv2.morphologyEx(upper_mask, cv2.MORPH_OPEN, open_kernel)
+
+    mask_result = depthmap * upper_mask
+    return mask_result
+
+
 def cv_from_frame(frame, model):
+
+    closest_distance = get_closest_nonzero(frame, 105)
     depth = cv2.resize(frame, (224, 224))
-
-    depth = tf.cast(depth, dtype = tf.float32)
-    thresh = tf.constant(105, dtype = tf.float32)
-    mask = tf.greater(depth, thresh)
-    non_zero_depth = tf.boolean_mask(depth, mask)
-    closest_distance = tf.reduce_min(non_zero_depth)
-
-    upper_mask = tf.where(tf.less_equal(depth, closest_distance + 400.0), tf.ones_like(depth), tf.zeros_like(depth))
-    depth = depth * upper_mask
+    depth = mask_depth_farther_than(depth, closest_distance)
 
     depth_clipped = datasets.util.scale_clip_image_data(depth, 1.0 / 1500.0)
 
@@ -119,9 +141,9 @@ def record_sample(model):
         time, depth_raw, rgb = cam.get_frame()  # camera warm up
         coords, values = cv_from_frame(depth_raw, model)
 
-        value_norm = np.linalg.norm(values)
+        value_mean = np.mean(values)
 
-        if value_norm < norm_limit:
+        if value_mean < hand_detection_limit:
             coords = np.zeros(coords.shape)
 
         coords = one_euro(coords, (datetime.now() - global_start_time).total_seconds())
@@ -134,9 +156,9 @@ def record_sample(model):
         coords_display = np.copy(coords)
         coords_display[:, 1] = 224.0 - coords_display[:, 1]
 
-        prod_img = tools.colorize_cv(depth_raw.squeeze())
+        prod_img = tools.colorize_cv(depth_raw.squeeze(), cmap = use_colormap)
 
-        if value_norm > 0.7:
+        if value_mean > hand_detection_limit:
             coords_scaled = coords_display * np.array([480 / 224, 640 / 224])
             tools.render_skeleton(prod_img, np.stack([coords_scaled[:, 1], coords_scaled[:, 0]], axis = 1), True,
                                   np.round(values, 3))
@@ -164,10 +186,12 @@ def element_diff(samples):
 def wrist_relative(samples):
     if len(samples.shape) == 3:
         res = samples - samples[:, 0][:, np.newaxis, :]
-
+        res[:, 0, :] = samples[:, 0]
         return res
     elif len(samples.shape) == 2:
-        return samples - samples[0]
+        res = samples - samples[0]
+        res[0] = samples[0]
+        return res
     else:
         raise NotImplementedError()
 
@@ -219,9 +243,9 @@ def run_app(model, action_manager, gesture_data):
         time, depth_raw, rgb = cam.get_frame()  # camera warm up
 
         coords, vals = cv_from_frame(depth_raw, model)
-        value_norm = np.linalg.norm(vals)
+        value_mean = np.mean(vals)
 
-        if value_norm < norm_limit:
+        if value_mean < hand_detection_limit:
             coords = np.zeros(coords.shape)
 
         coords = one_euro(coords, (datetime.now() - global_start_time).total_seconds())
@@ -268,10 +292,10 @@ def run_app(model, action_manager, gesture_data):
             coords_display = np.copy(coords)
             coords_display[:,1] = 224.0 - coords_display[:, 1]
 
-            result_img = tools.colorize_cv(depth_raw.squeeze())
+            result_img = tools.colorize_cv(depth_raw.squeeze(), cmap = use_colormap)
 
             # Skeleton
-            if value_norm > norm_limit:
+            if value_mean > hand_detection_limit:
                 coords_scaled = coords_display * np.array([480 / 224, 640 / 224])
                 tools.render_skeleton(result_img, np.stack([coords_scaled[:, 1], coords_scaled[:, 0]], axis = 1), True,
                                       np.round(vals, 2))

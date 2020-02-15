@@ -29,6 +29,10 @@ class KNNClassifier():
     def push_sample(self, sample):
         self.current_data_frame.appendleft(copy.copy(sample))
 
+    def push_samples(self, samples):
+        for sample in samples:
+            # since we want to maintain the order of the data, we use append instead of appendleft!
+            self.current_data_frame.append(sample)
 
     def save_current_as_train_data(self, label):
         self.add_class(label)
@@ -82,4 +86,3 @@ class KNNClassifier():
     def reset_queue(self):
         for i in range(self.batch_size):
             self.current_data_frame.append(np.zeros(self.sample_shape))
-            print("gesture classifier queue reset!")

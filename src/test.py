@@ -50,7 +50,7 @@ def angle_between_keypoints(start, mid, end):
 
 if __name__ == '__main__':
 
-    #model = tf.keras.models.load_model(
+    # model = tf.keras.models.load_model(
     #        'E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d'
     #        '\\ueber_weihnachten\\pose_est_refined.hdf5', compile = False)
 
@@ -60,8 +60,15 @@ if __name__ == '__main__':
 
     win_name_net = 'net'
     win_name_net_prod = 'prod'
+    win_name_mask = "mask"
+    win_name_debug = "debug"
+
+    use_colormap = 'bone'
+
     cv2.namedWindow(win_name_net)
     cv2.namedWindow(win_name_net_prod)
+    cv2.namedWindow(win_name_mask)
+    cv2.namedWindow(win_name_debug)
 
     if not use_camera:
         with open("datasets.json", "r") as f:
@@ -74,11 +81,13 @@ if __name__ == '__main__':
             res = model.predict(np.expand_dims(img, 0))
             res = res.squeeze()
             complete_map = np.sum(res, axis = 2)
-            img2 = tools.colorize_cv(img.numpy().squeeze() + complete_map)
+            img2 = tools.colorize_cv(img.numpy().squeeze() + complete_map, cmap = use_colormap)
             cv2.imshow(win_name_net, img2)
             cv2.waitKey(33)
     else:
         one_euro = refiners.OneEuroFilter(freq = 30, mincutoff = 1.0, beta = 0.01)
+
+        morph_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
 
         do_filter = True
         show_net_output = True
@@ -99,16 +108,25 @@ if __name__ == '__main__':
             loop_start_time = datetime.now()
             time, depth_raw, rgb = cam.get_frame()
 
+            # we do this before rescaling since rescaling blurs the image
+            non_zero_depth = np.where(np.greater(depth_raw, 105), np.ones_like(depth_raw),
+                                      np.zeros_like(depth_raw))
+            non_zero_mask = cv2.erode(non_zero_depth, morph_kernel, iterations = 1)
+
+            cv2.imshow(win_name_debug, non_zero_mask.astype(np.float32))
+            non_zero_mask = np.where(np.greater(non_zero_mask, 0))
+            closest_distance = np.min(depth_raw[non_zero_mask])
+
             depth = cv2.resize(depth_raw, (224, 224))
 
-            depth = tf.cast(depth, dtype = tf.float32)
-            thresh = tf.constant(105, dtype = tf.float32)
-            mask = tf.greater(depth, thresh)
-            non_zero_depth = tf.boolean_mask(depth, mask)
-            closest_distance = tf.reduce_min(non_zero_depth)
+            upper_mask = np.where(np.less_equal(depth, closest_distance + 200.0), np.ones_like(depth),
+                                  np.zeros_like(depth))
+            upper_mask = cv2.medianBlur(upper_mask, 3)
 
-            upper_mask = tf.where(tf.less_equal(depth, closest_distance + 400.0), tf.ones_like(depth),
-                                  tf.zeros_like(depth))
+            upper_mask = cv2.morphologyEx(upper_mask, cv2.MORPH_OPEN, morph_kernel)
+
+            cv2.imshow(win_name_mask, upper_mask.astype(np.float32))
+
             depth = depth * upper_mask
 
             depth = datasets.util.scale_clip_image_data(depth, 1.0 / 1500.0)
@@ -136,21 +154,21 @@ if __name__ == '__main__':
             net_img = depth.squeeze()
             if show_net_output:
                 net_img = net_img + complete_map
-            net_img = tools.colorize_cv(net_img)
+            net_img = tools.colorize_cv(net_img, cmap = use_colormap)
 
             depth_raw = depth_raw.clip(min = None, max = 800)
 
-            #prod_img = rgb
+            # prod_img = rgb
             if depth_raw.shape != (480, 640):
                 depth_raw = cv2.resize(depth_raw.squeeze(), (640, 480))
 
-            prod_img = tools.colorize_cv(depth_raw)
+            prod_img = tools.colorize_cv(depth_raw, cmap = use_colormap)
 
             prod_img = np.flip(prod_img, 1)  # feels more natural
             prod_img = np.ascontiguousarray(prod_img)
             coords[:, 1] = 224 - coords[:, 1]
 
-            if value_mean > 0.4: # value_norm > 1.3:
+            if value_mean > 0.6:  # value_norm > 1.3:
 
                 if do_filter:
                     # coords = lpf.filter(coords)
@@ -168,10 +186,10 @@ if __name__ == '__main__':
                 tip_mcp_dists = np.abs([w_tip_dists[i] - w_dists[i + 1] for i in range(5)])
 
                 gesture_cond = True
-                #gesture_cond = np.mean(w_tip_dists[[0, 1]]) > 2 * np.median(w_tip_dists[[0, 1, 2, 3, 4]], axis = 0)
-                #gesture_cond = gesture_cond and w_tip_dists[0] > 1.2 * w_dists[7]
-                gesture_cond = gesture_cond and tip_mcp_dists[1] > np.mean(tip_mcp_dists[[0,2,3,4]])
-                #gesture_cond = gesture_cond and (angle_between_keypoints(coords_scaled[8], coords_scaled[0], coords_scaled[11]) > np.pi / 6)
+                # gesture_cond = np.mean(w_tip_dists[[0, 1]]) > 2 * np.median(w_tip_dists[[0, 1, 2, 3, 4]], axis = 0)
+                # gesture_cond = gesture_cond and w_tip_dists[0] > 1.2 * w_dists[7]
+                gesture_cond = gesture_cond and tip_mcp_dists[1] > np.mean(tip_mcp_dists[[0, 2, 3, 4]])
+                # gesture_cond = gesture_cond and (angle_between_keypoints(coords_scaled[8], coords_scaled[0], coords_scaled[11]) > np.pi / 6)
 
                 if gesture_cond:
                     if not gesture_mode:
@@ -191,7 +209,7 @@ if __name__ == '__main__':
                 if gesture_mode:
                     skel_com = np.median(coords_scaled,
                                          axis = 0)  # yes, median, not mean. This is more robust to mispredictions!
-                    skel_com = coords_scaled[11] #itip
+                    skel_com = coords_scaled[11]  # itip
                     gesture_keypoints.append(skel_com)
                     if len(gesture_keypoints) > 2:
                         pts = np.array(gesture_keypoints, dtype = np.int32)
@@ -239,7 +257,7 @@ if __name__ == '__main__':
                 print("Min_Cutoff: {}".format(one_euro.get_mincutoff()))
             elif key == 110:  # n
                 show_net_output = not show_net_output
-            elif key == 98:   # b
+            elif key == 98:  # b
                 show_bounding_box = not show_bounding_box
         del cam
     cv2.destroyAllWindows()
