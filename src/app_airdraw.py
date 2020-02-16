@@ -253,10 +253,22 @@ def record_sample(pose_estimation_model):
 
 
 def element_diff(samples):
-    if len(samples.shape) == 3:
-        return np.diff(samples, axis = 0, append = 0)
-    elif len(samples.shape) == 2:
-        return np.diff(samples, axis = 1, append = 0)
+    if len(samples.shape) == 2:
+        diff = np.diff(samples, axis = 0, append = 0)
+        diff_diff = np.diff(diff, axis = 0, append = 0)
+        diff_gtzero = diff[diff > 0]
+
+        gt_m  = np.median(diff_gtzero)
+        mask_gt = diff > 3 * gt_m
+
+        diff_ltzero = diff[diff < 0]
+        lt_m = np.median(diff_ltzero)
+        mask_lt = diff < 3 * lt_m
+
+        diff[mask_gt] = 0
+        diff[mask_lt] = 0
+
+        return diff
     else:
         raise NotImplementedError()
 
@@ -273,14 +285,17 @@ def run_app(model, action_manager, gesture_data):
     gesture_classifier = KNNClassifier(k = 3,
                                        batch_size = gesture_sample_length,
                                        sample_shape = coords.size,
-                                       metric = 'manhattan'
+                                       metric = None
                                        )
     X = []
     Y = []
 
     for idx, gesture in enumerate(gesture_data):
         for sample in gesture.samples:
-            X.append(sample.reshape(-1))
+            sample_diff = element_diff(sample)
+            print("sample: ", sample)
+            print("diff: ", sample_diff)
+            X.append(sample_diff.reshape(-1))
             Y.append(idx)
 
             # X.append(element_diff(sample).reshape(-1))
@@ -350,7 +365,7 @@ def run_app(model, action_manager, gesture_data):
                 while len(point_samples) < gesture_sample_length:
                     point_samples.appendleft(np.zeros(2))
 
-                gesture_classifier.push_samples(point_samples)
+                gesture_classifier.push_samples(element_diff(np.array(point_samples)))
                 gesture_prediction = gesture_classifier.predict()[0]
 
                 gesture = gesture_data[gesture_prediction]
