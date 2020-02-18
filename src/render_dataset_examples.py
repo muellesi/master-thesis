@@ -11,7 +11,7 @@ import tools.training_callbacks
 from datasets import SerializedDataset
 from datasets.tfrecord_helper import decode_confmaps
 import glob
-
+import matplotlib.pyplot as plt
 
 net_input_height = 224
 net_input_width = 224
@@ -118,6 +118,203 @@ if __name__ == "__main__":
 
         del ds_train
         del ds_provider
+
+
+
+
+
+    def twod_argmax(val):
+        maxy = tf.argmax(tf.reduce_max(val, axis = 2), 1)
+        maxx = tf.argmax(tf.reduce_max(val, axis = 1), 1)
+        maxs = tf.stack([maxy, maxx], axis = 2)
+        maxs = tf.cast(maxs, dtype = tf.dtypes.float32)
+        return maxs
+
+
+
+
+
+
+
+
+    # pose estimation training
+    twod_pose_basepath = os.path.join(basepath, "2d_pose")
+
+    if not os.path.exists(twod_pose_basepath):
+        os.makedirs(twod_pose_basepath)
+
+        import datasets
+        import datasets.util
+
+        def crop_image(img, skel, intr):
+            CUBE_OFFSET = 100  # mm
+
+
+            def inner_np(depth, skeleton, intr):
+                skeleton = np.reshape(skeleton, [21, 3])
+                max3d = np.max(skeleton, axis = 0)
+                min3d = np.min(skeleton, axis = 0)
+
+                max_z = max3d[2]
+                min_z = min3d[2]
+
+                cube = np.array(
+                        [
+                                [min3d[0] - CUBE_OFFSET, min3d[1] - CUBE_OFFSET, min3d[2] - CUBE_OFFSET],  # front top left
+                                [max3d[0] + CUBE_OFFSET, min3d[1] - CUBE_OFFSET, min3d[2] - CUBE_OFFSET],  # front top right
+                                [max3d[0] + CUBE_OFFSET, max3d[1] + CUBE_OFFSET, min3d[2] - CUBE_OFFSET],
+                                # front bottom right
+                                [min3d[0] - CUBE_OFFSET, max3d[1] + CUBE_OFFSET, min3d[2] - CUBE_OFFSET],
+                                # front bottom left
+
+                                [min3d[0] - CUBE_OFFSET, min3d[1] - CUBE_OFFSET, max3d[2] + CUBE_OFFSET],  # back top left
+                                [max3d[0] + CUBE_OFFSET, min3d[1] - CUBE_OFFSET, max3d[2] + CUBE_OFFSET],  # back top right
+                                [max3d[0] + CUBE_OFFSET, max3d[1] + CUBE_OFFSET, max3d[2] + CUBE_OFFSET],
+                                # back bottom right
+                                [min3d[0] - CUBE_OFFSET, max3d[1] + CUBE_OFFSET, max3d[2] + CUBE_OFFSET],
+                                # back bottom right
+                                ]
+                        )
+
+                cube_hom2d = intr.dot(cube.transpose()).transpose()
+                cube2d = (cube_hom2d / cube_hom2d[:, 2:])[:, :2]
+
+                max2d = tf.reduce_max(cube2d, axis = 0)
+                min2d = tf.reduce_min(cube2d, axis = 0)
+
+                maxx = int(min(net_input_width, max(0, max2d[0])))
+                minx = int(min(net_input_width, max(0, min2d[0])))
+                maxy = int(min(net_input_height, max(0, max2d[1])))
+                miny = int(min(net_input_height, max(0, min2d[1])))
+
+                masked = np.zeros_like(depth, dtype = np.float32)
+                masked[miny:maxy, minx:maxx, :] = depth[miny:maxy, minx:maxx, :]
+
+                maxz = max_z + CUBE_OFFSET
+                minz = min_z - CUBE_OFFSET
+
+                z_lim = np.logical_or(masked > maxz, masked < minz)
+                masked[z_lim] = 0.0
+
+                return masked
+
+
+            res = tf.numpy_function(inner_np, (img, skel, intr), Tout = tf.float32)
+            res = tf.ensure_shape(res, [int(net_input_height), int(net_input_width), 1])
+            return res
+
+
+        def prepare_ds(name, ds, cam_intr, add_noise, add_empty, augment):
+            ds = ds.map(lambda index, depth, img_width, img_height, skeleton, conf_maps:
+                        (crop_image(depth, skeleton, cam_intr), conf_maps),
+                        num_parallel_calls = tf.data.experimental.AUTOTUNE)
+
+            ds = ds.map(lambda img, confm: (img, decode_confmaps(confm)),
+                        num_parallel_calls = tf.data.experimental.AUTOTUNE)
+
+            ds = ds.map(lambda img, confm:
+                        (datasets.util.scale_clip_image_data(img, 1.0 / 1500.0),
+                         datasets.util.scale_clip_image_data(confm, 1.0 / 2 ** 16)),
+                        num_parallel_calls = tf.data.experimental.AUTOTUNE)
+
+            ds = ds.map(lambda img, confm: (img,
+                                            confm *
+                                            (tf.math.divide_no_nan(
+                                                    tf.constant(1.0,
+                                                                dtype =
+                                                                tf.dtypes.float32),
+                                                    tf.reduce_max(confm)))),
+                        num_parallel_calls = tf.data.experimental.AUTOTUNE)
+
+            if add_noise:
+                ds = ds.map(lambda img, confm:
+                            (datasets.util.add_random_noise(img),
+                             confm),
+                            num_parallel_calls = tf.data.experimental.AUTOTUNE)
+
+            if augment:
+                ds = ds.map(
+                        lambda img, confm: datasets.util.augment_depth_and_confmaps(img, confm,
+                                                                                    augmentation_probability = 0.6),
+                        num_parallel_calls = tf.data.experimental.AUTOTUNE)
+
+                ds = ds.map(lambda img, confm: (img,
+                                                confm *
+                                                (tf.math.divide_no_nan(
+                                                        tf.constant(1.0,
+                                                                    dtype =
+                                                                    tf.dtypes.float32),
+                                                        tf.reduce_max(confm)))),
+                            num_parallel_calls = tf.data.experimental.AUTOTUNE)  # restore confmap density after blurring
+
+
+            return ds
+
+
+
+        with open("datasets.json", "r") as f:
+            ds_settings = json.load(f)
+
+        ds_provider = SerializedDataset(ds_settings["BigHands224ConfMap"])
+
+        ds_train = ds_provider.get_data("train")
+        ds_train = prepare_ds('train',
+                              ds_train,
+                              cam_intr = ds_provider.camera_intrinsics,
+                              add_noise = True,
+                              add_empty = False,
+                              augment = True)
+        ds_train = datasets.util.batch_shuffle_prefetch(ds_train,
+                                                        batch_size = batch_size)
+
+        batch = ds_train.take(1)
+        data = batch.unbatch()
+
+        model = tf.keras.models.load_model("E:\\Google Drive\\UNI\\Master\\Thesis\\Data\\pose_est\\2d\\noch_weiter_trainiert\\checkpoints\\pose_est_refined.hdf5", compile = False)
+
+        idx = 0
+        for inp, outp in data:
+            pred_res = model.predict(tf.expand_dims(inp, 0))
+            skeleton_coords = twod_argmax(pred_res).numpy().squeeze()
+
+            pred_res = pred_res.squeeze()
+
+            input_image = tools.colorize_cv(copy.copy(inp.numpy()), cmap = 'bone')
+            cv2.imwrite(os.path.join(twod_pose_basepath, "{}_input.png".format(idx)), input_image)
+
+            confmaps = copy.deepcopy(pred_res)
+            confmaps = confmaps.transpose((2,0,1))
+
+            j_idx = 0
+            for confmap in confmaps:
+                cm = tools.colorize_cv(copy.copy(confmap), cmap = 'bone')
+                cv2.imwrite(os.path.join(twod_pose_basepath, "{}_joint_{}_({}).png".format(idx, j_idx, ds_provider.joint_names[j_idx])), cm)
+                j_idx += 1
+
+            confmaps_stacked = np.max(confmaps, axis = 0)
+            confm_stack_colored = tools.colorize_cv(copy.copy(confmaps_stacked), cmap='bone')
+            cv2.imwrite(os.path.join(twod_pose_basepath, "{}_confmap_stack.png".format(idx)), confm_stack_colored)
+
+            skeleton_coords[:] = skeleton_coords[:, [1, 0]]  # ...?
+            empty = np.zeros_like(input_image)
+            skeleton_img = tools.render_skeleton(empty, skeleton_coords, joint_idxs = False)
+
+            plt.matshow(skeleton_img)
+            cv2.imwrite(os.path.join(twod_pose_basepath, "{}_skeleton.png".format(idx)), skeleton_img)
+
+            skeleton_on_depth = tools.render_skeleton(input_image, skeleton_coords, joint_idxs = False)
+            cv2.imwrite(os.path.join(twod_pose_basepath, "{}_skeleton_on_img.png".format(idx)),
+                        skeleton_on_depth)
+
+            idx += 1
+
+
+
+
+
+
+
+
 
 
 
