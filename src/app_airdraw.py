@@ -1,4 +1,5 @@
 import collections
+import math
 import os
 from datetime import datetime
 from datetime import timedelta
@@ -144,6 +145,63 @@ def airdraw_from_points(img, pts):
     return img
 
 
+def distance(pt1, pt2):
+    return math.hypot(pt1[0] - pt2[0], pt1[1] - pt2[1])
+
+
+def path_length(points):
+    d = 0
+    for i in range(len(points) - 1):
+        d += distance(points[i], points[i + 1])
+    return d
+
+
+def resample(points, n_points):
+
+    start = 0
+    while np.allclose(points[start], 0.0):
+        start += 1
+    pts = [points[j] for j in range(start, len(points))]
+
+    I = path_length(pts) / (n_points - 1)
+    D = 0
+
+    i = 0
+    new_points = [pts[i]]
+
+    i += 1
+    while True:
+        p1 = pts[i - 1]
+        p2 = pts[i]
+
+        d = distance(p2, p1)
+        if D + d >= I:
+            q = p1 + ((I - D) / d) * (p2 - p1)
+            new_points.append(q)
+            pts.insert(i, q)
+            D = 0
+        else:
+            D += d
+
+        i += 1
+        if i == len(pts):
+            break
+
+    if len(new_points) == n_points - 1:
+        p = pts[-1]
+        new_points.append(p)
+
+    import matplotlib.pyplot as plt
+    fig = plt.figure(figsize = (5, 5))
+    ax2 = fig.add_subplot(111)
+    ax2.set_xlim(0, 224)
+    ax2.set_ylim(0, 224)
+    new_points = np.stack(new_points)
+    ax2.scatter(new_points[:, 1], new_points[:, 0])
+    fig.show()
+    return np.stack(new_points)
+
+
 def record_sample(pose_estimation_model):
     display_size = (640, 480)
     countdown_font_scale = 5
@@ -160,7 +218,7 @@ def record_sample(pose_estimation_model):
     # Show Countdown
     ####################################################################
     countdown_start_time = datetime.now()
-    countdown_end_time = countdown_start_time + timedelta(seconds = 5)
+    countdown_end_time = countdown_start_time + timedelta(seconds = 2)
     while datetime.now() < countdown_end_time:
         time, depth_raw, rgb = cam.get_frame()  # camera warm up
 
@@ -258,7 +316,7 @@ def element_diff(samples):
         diff_diff = np.diff(diff, axis = 0, append = 0)
         diff_gtzero = diff[diff > 0]
 
-        gt_m  = np.median(diff_gtzero)
+        gt_m = np.median(diff_gtzero)
         mask_gt = diff > 3 * gt_m
 
         diff_ltzero = diff[diff < 0]
@@ -285,13 +343,22 @@ def run_app(model, action_manager, gesture_data):
     gesture_classifier = KNNClassifier(k = 3,
                                        batch_size = gesture_sample_length,
                                        sample_shape = coords.size,
-                                       metric = None
+                                       metric = 'braycurtis'
                                        )
+    if use_pca:
+        gesture_classifier = KNNClassifier(k = 3,
+                                           batch_size = pca_components,
+                                           sample_shape = (1),
+                                           metric = 'correlation'
+                                           )
     X = []
     Y = []
 
     for idx, gesture in enumerate(gesture_data):
         for sample in gesture.samples:
+            if do_resample:
+                sample = resample(sample, resample_size)
+
             sample_diff = element_diff(sample)
             print("sample: ", sample)
             print("diff: ", sample_diff)
@@ -300,6 +367,10 @@ def run_app(model, action_manager, gesture_data):
 
             # X.append(element_diff(sample).reshape(-1))
             # Y.append(idx + 1)
+
+    if use_pca:
+        X = pca.fit_transform(np.stack(X))
+        X = np.split(X.reshape(-1), X.shape[0])
 
     gesture_classifier.set_train_data(X, Y)
 
@@ -365,7 +436,18 @@ def run_app(model, action_manager, gesture_data):
                 while len(point_samples) < gesture_sample_length:
                     point_samples.appendleft(np.zeros(2))
 
-                gesture_classifier.push_samples(element_diff(np.array(point_samples)))
+                processed_sample = np.stack(point_samples)
+
+                if do_resample:
+                    processed_sample = resample(processed_sample, resample_size)
+
+                processed_sample = element_diff(processed_sample)
+
+                if use_pca:
+                    processed_sample = pca.transform([processed_sample.reshape(-1)])
+                    processed_sample = processed_sample.reshape(-1)
+
+                gesture_classifier.push_samples(processed_sample)
                 gesture_prediction = gesture_classifier.predict()[0]
 
                 gesture = gesture_data[gesture_prediction]
@@ -456,7 +538,18 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    save_file_name = "gesture_data_airdraw.json"
+    save_file_name = "gesture_data_airdraw_16sample.json"
+
+    use_pca = True
+    if use_pca:
+        from sklearn.decomposition import PCA
+
+    do_resample = True
+    if do_resample:
+        resample_size = 50
+
+        pca_components = 15
+        pca = PCA(svd_solver = 'arpack', n_components = pca_components)
     main(None)
     del tf
     logger.info("App end!")

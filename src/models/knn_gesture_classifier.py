@@ -78,7 +78,7 @@ class KNNClassifier():
         if self.metric is not None:
             add_settings["metric"] = self.metric
 
-        self.knn = KNeighborsClassifier(n_neighbors = 3, **add_settings)
+        self.knn = KNeighborsClassifier(n_neighbors = self.k, **add_settings)
 
         self.knn.fit(self.train_data, self.train_data_labels)
 

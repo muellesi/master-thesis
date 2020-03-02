@@ -215,7 +215,7 @@ if __name__ == '__main__':
                         pts = np.array(gesture_keypoints, dtype = np.int32)
                         pts = np.flip(pts, 1)  # switch x and y coordinates for cv2's point format
                         pts = np.expand_dims(pts, 0)  # polylines wants a 3d array
-                        cv2.polylines(prod_img, pts, isClosed = False, color = (255, 0, 0), thickness = 5)
+                        #cv2.polylines(prod_img, pts, isClosed = False, color = (255, 0, 0), thickness = 5)
 
                 if show_bounding_box:
                     tools.render_bb(prod_img, (min_x - 10, min_y - 10, max_x + 10, max_y + 10), value_mean)

@@ -25,6 +25,7 @@ dependencies:
   - pip
   - lxml
   - tensorflow-probability
+  - seaborn
   - pip:
     - pyrealsense2
     - pynput
