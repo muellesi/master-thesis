@@ -6,6 +6,7 @@ from datetime import timedelta
 
 import cv2
 import numpy as np
+import seaborn
 import tensorflow as tf
 
 import app_framework.actions
@@ -17,6 +18,7 @@ from app_framework.gesture_save_file import deserialize_to_gesture_collection
 from app_framework.gesture_save_file import serialize_gesture_collection
 from models.knn_gesture_classifier import KNNClassifier
 from tools import RealsenseCamera
+import matplotlib.pyplot as plt
 
 
 
@@ -156,8 +158,10 @@ def path_length(points):
     return d
 
 
-def resample(points, n_points):
-
+def resample(points, n_points, do_plot = False):
+    """
+    Resample gesture according to the 1$ resampling algorithm. Transforms points by resampling it into n_points points with equal distance.
+    """
     start = 0
     while np.allclose(points[start], 0.0):
         start += 1
@@ -191,14 +195,20 @@ def resample(points, n_points):
         p = pts[-1]
         new_points.append(p)
 
-    import matplotlib.pyplot as plt
-    fig = plt.figure(figsize = (5, 5))
-    ax2 = fig.add_subplot(111)
-    ax2.set_xlim(0, 224)
-    ax2.set_ylim(0, 224)
-    new_points = np.stack(new_points)
-    ax2.scatter(new_points[:, 1], new_points[:, 0])
-    fig.show()
+    if do_plot:
+        fig = plt.figure(figsize = (24, 12))
+        ax = fig.add_subplot(121)
+        ax.set_xlim(0, 224)
+        ax.set_ylim(0, 224)
+        seaborn.scatterplot(points[:,1], points[:,0], s=150, ax = ax)
+
+        ax2 = fig.add_subplot(122)
+        ax2.set_xlim(0, 224)
+        ax2.set_ylim(0, 224)
+        new_points = np.stack(new_points)
+        seaborn.scatterplot(new_points[:, 1], new_points[:, 0], s=150, ax = ax2)
+        fig.show()
+        del fig
     return np.stack(new_points)
 
 
@@ -360,8 +370,6 @@ def run_app(model, action_manager, gesture_data):
                 sample = resample(sample, resample_size)
 
             sample_diff = element_diff(sample)
-            print("sample: ", sample)
-            print("diff: ", sample_diff)
             X.append(sample_diff.reshape(-1))
             Y.append(idx)
 
@@ -439,7 +447,7 @@ def run_app(model, action_manager, gesture_data):
                 processed_sample = np.stack(point_samples)
 
                 if do_resample:
-                    processed_sample = resample(processed_sample, resample_size)
+                    processed_sample = resample(processed_sample, resample_size, do_plot = False)
 
                 processed_sample = element_diff(processed_sample)
 
@@ -548,7 +556,7 @@ if __name__ == "__main__":
     if do_resample:
         resample_size = 50
 
-        pca_components = 15
+        pca_components = 20
         pca = PCA(svd_solver = 'arpack', n_components = pca_components)
     main(None)
     del tf

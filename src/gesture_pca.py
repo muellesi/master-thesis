@@ -11,6 +11,7 @@ from app_framework.gesture_save_file import deserialize_to_gesture_collection
 
 
 
+
 np.set_printoptions(suppress = True)
 
 
@@ -53,6 +54,17 @@ if __name__ == "__main__":
             # X.append(sample.reshape(-1))
             Y.append(labels[idx])
 
+    pre_pca = PCA(svd_solver = 'arpack')
+    pre_pca.fit(np.stack(X))
+    pca_factors = pre_pca.explained_variance_ratio_
+    pca_factors_cumsum = pca_factors.cumsum()
+    sn.set_context("talk")
+    with sn.axes_style("darkgrid"):
+        fig = plt.figure(figsize = (12, 6))
+        ax = fig.add_subplot(111)
+        sn.scatterplot(range(0, len(pca_factors)), pca_factors, ax = ax)
+        sn.scatterplot(range(0, len(pca_factors_cumsum)), pca_factors_cumsum, ax = ax)
+        fig.show()
 
     pca = PCA(svd_solver = 'arpack', n_components = 15)
     x_hat = pca.fit_transform(np.stack(X))

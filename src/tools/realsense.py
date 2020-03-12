@@ -52,11 +52,21 @@ class RealsenseCamera:
                     print("Advanced mode is", "enabled" if self.advnc_mode.is_enabled() else "disabled")
 
                 self.advnc_mode.load_json(json_string)
+                roi = self.cfg.get_device().first_roi_sensor().get_region_of_interest()
+                roi.max_x = int(json_obj['stream-width']) // 2 + 50
+                roi.max_y = int(json_obj['stream-height']) // 2 + 50
+                roi.min_x = int(json_obj['stream-width']) // 2 - 50
+                roi.min_y = int(json_obj['stream-height']) // 2 - 50
+                self.cfg.get_device().first_roi_sensor().set_region_of_interest(roi)
+
             else:
                 # Start streaming
                 self.cfg = self.pipeline.start(self.camera_config)
                 self.dev = self.cfg.get_device()
                 self.logger.error("Given config file path {} is not valid!".format(settings_json))
+
+
+
 
         # Get stream profile and camera intrinsics
         profile = self.pipeline.get_active_profile()
